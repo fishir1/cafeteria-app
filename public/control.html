@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Cafeteria Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #111;
+      color: white;
+      overflow-y: auto;
+    }
+
+    .header {
+      padding: 16px;
+      text-align: center;
+      background: #1a1a1a;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid #333;
+    }
+    .header h1 { font-size: 18px; font-weight: 700; }
+    .status {
+      font-size: 13px;
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+    .status.connected { color: #4caf50; opacity: 1; }
+    .status.disconnected { color: #f44336; opacity: 1; }
+
+    .current {
+      padding: 20px;
+      text-align: center;
+      background: #222;
+      border-bottom: 1px solid #333;
+    }
+    .current .label { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
+    .current .sublabel { font-size: 13px; opacity: 0.7; margin-bottom: 10px; }
+    .current .timer { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
+    .current .phase { font-size: 12px; opacity: 0.6; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .buttons {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    button {
+      font-family: inherit;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 18px 12px;
+      border: none;
+      border-radius: 12px;
+      color: white;
+      background: #333;
+      cursor: pointer;
+      transition: transform 0.1s, opacity 0.2s;
+      min-height: 64px;
+      user-select: none;
+    }
+    button:active { transform: scale(0.96); opacity: 0.85; }
+    button:disabled { opacity: 0.35; }
+
+    button.start { background: #2e7d32; }
+    button.pause { background: #f57c00; }
+    button.next { background: #1976d2; }
+    button.reset { background: #b71c1c; }
+    button.quiet { background: #5e35b1; }
+    button.exit { background: #00838f; }
+
+    button.loud {
+      grid-column: 1 / -1;
+      background: #d32f2f;
+      font-size: 20px;
+      padding: 28px 12px;
+      min-height: 90px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.7); }
+      50% { box-shadow: 0 0 0 14px rgba(211, 47, 47, 0); }
+    }
+
+    .section-title {
+      grid-column: 1 / -1;
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      opacity: 0.5;
+      margin-top: 8px;
+      padding-bottom: 4px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>Cafeteria Control</h1>
+    <div class="status" id="status">Connecting…</div>
+  </div>
+
+  <div class="current">
+    <div class="label" id="label">—</div>
+    <div class="sublabel" id="sublabel"></div>
+    <div class="timer" id="timer">--</div>
+    <div class="phase" id="phase"></div>
+  </div>
+
+  <div class="buttons">
+    <button class="loud" id="btnLoud">🔇 Voices Too Loud</button>
+
+    <div class="section-title">Main controls</div>
+    <button class="start" id="btnStart">▶️ Start</button>
+    <button class="pause" id="btnPause">⏸️ Pause</button>
+    <button class="next" id="btnNext">⏭️ Next</button>
+    <button class="reset" id="btnReset">🔄 Reset</button>
+
+    <div class="section-title">Jump to phase</div>
+    <button class="quiet" id="btnQuiet">🕒 Quiet Time</button>
+    <button class="exit" id="btnExit">🚪 Exit Phase</button>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const status = document.getElementById("status");
+    const label = document.getElementById("label");
+    const sublabel = document.getElementById("sublabel");
+    const timer = document.getElementById("timer");
+    const phase = document.getElementById("phase");
+
+    function send(cmd) {
+      socket.emit("command", cmd);
+      // Short haptic feedback on phones that support it
+      if (navigator.vibrate) navigator.vibrate(30);
+    }
+
+    document.getElementById("btnStart").addEventListener("click", () => send("start"));
+    document.getElementById("btnPause").addEventListener("click", () => send("pause"));
+    document.getElementById("btnNext").addEventListener("click", () => send("next"));
+    document.getElementById("btnReset").addEventListener("click", () => send("reset"));
+    document.getElementById("btnQuiet").addEventListener("click", () => send("quiet"));
+    document.getElementById("btnExit").addEventListener("click", () => send("exitPhase"));
+    document.getElementById("btnLoud").addEventListener("click", () => send("loud"));
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    socket.on("connect", () => {
+      status.textContent = "Connected";
+      status.className = "status connected";
+    });
+
+    socket.on("disconnect", () => {
+      status.textContent = "Disconnected — retrying…";
+      status.className = "status disconnected";
+    });
+
+    socket.on("state", (s) => {
+      label.textContent = s.label;
+      sublabel.textContent = s.sublabel || "";
+      if (s.totalSeconds === 0) {
+        timer.textContent = "—";
+      } else {
+        timer.textContent = formatTime(Math.max(0, s.secondsLeft));
+      }
+      phase.textContent = `Phase ${s.phase} · Step ${s.currentIndex + 1}/${s.totalSteps}${s.paused ? " · PAUSED" : ""}`;
+    });
+  </script>
+</body>
+</html>

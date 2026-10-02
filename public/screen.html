@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Cafeteria Screen</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #222;
+      color: white;
+      transition: background-color 0.4s ease;
+    }
+
+    .container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      padding: 40px;
+    }
+
+    /* Flashing animation applied to the whole container */
+    @keyframes flash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+    .flashing {
+      animation: flash 1s infinite;
+    }
+
+    .label {
+      font-size: 12vw;
+      font-weight: 900;
+      line-height: 1;
+      margin-bottom: 30px;
+      text-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+
+    .sublabel {
+      font-size: 3vw;
+      font-weight: 400;
+      opacity: 0.9;
+      margin-bottom: 40px;
+    }
+
+    .timer {
+      font-size: 18vw;
+      font-weight: 900;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      text-shadow: 0 6px 20px rgba(0,0,0,0.4);
+    }
+
+    .timer-small {
+      font-size: 10vw;
+    }
+
+    /* "Please lower your voices" overlay */
+    .loud-overlay {
+      position: fixed;
+      inset: 0;
+      background: #b00020;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      animation: flash 0.6s infinite;
+    }
+    .loud-overlay.show {
+      display: flex;
+    }
+    .loud-overlay .icon {
+      font-size: 20vw;
+      margin-bottom: 20px;
+    }
+    .loud-overlay .text {
+      font-size: 6vw;
+      font-weight: 900;
+      text-align: center;
+      padding: 0 40px;
+    }
+
+    /* Pre-start screen */
+    .prestart {
+      position: fixed;
+      inset: 0;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      cursor: pointer;
+    }
+    .prestart.hidden { display: none; }
+    .prestart h1 { font-size: 4vw; margin-bottom: 20px; }
+    .prestart p { font-size: 2vw; opacity: 0.7; }
+  </style>
+</head>
+<body>
+
+  <!-- Pre-start screen: tap once to enable audio -->
+  <div class="prestart" id="prestart">
+    <h1>🖐️ Tap anywhere to begin</h1>
+    <p>This enables sound and connects to the server.</p>
+  </div>
+
+  <!-- Main display -->
+  <div class="container" id="container">
+    <div class="label" id="label">Waiting…</div>
+    <div class="sublabel" id="sublabel"></div>
+    <div class="timer" id="timer">--</div>
+  </div>
+
+  <!-- Loud overlay -->
+  <div class="loud-overlay" id="loudOverlay">
+    <div class="icon">🔇</div>
+    <div class="text">Please lower your voices</div>
+  </div>
+
+  <!-- Ding sound (uses a free public URL — replace later if you want) -->
+  <audio id="ding" preload="auto">
+    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg" />
+  </audio>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io();
+
+    const container = document.getElementById("container");
+    const label = document.getElementById("label");
+    const sublabel = document.getElementById("sublabel");
+    const timer = document.getElementById("timer");
+    const loudOverlay = document.getElementById("loudOverlay");
+    const prestart = document.getElementById("prestart");
+    const ding = document.getElementById("ding");
+
+    let audioReady = false;
+
+    // Tap to enable audio
+    prestart.addEventListener("click", () => {
+      audioReady = true;
+      prestart.classList.add("hidden");
+      // Play a silent sound to unlock audio
+      ding.volume = 0;
+      ding.play().then(() => {
+        ding.pause();
+        ding.currentTime = 0;
+        ding.volume = 1;
+      }).catch(() => {});
+    });
+
+    function formatTime(sec) {
+      const m = Math.floor(sec / 60);
+      const s = sec % 60;
+      return `${m}:${String(s).padStart(2, "0")}`;
+    }
+
+    function playDing() {
+      if (!audioReady) return;
+      try {
+        ding.currentTime = 0;
+        ding.play();
+      } catch (e) {}
+    }
+
+    socket.on("state", (s) => {
+      // Background color
+      document.body.style.backgroundColor = s.color || "#222";
+
+      // Label + sublabel
+      label.textContent = s.label;
+      sublabel.textContent = s.sublabel || "";
+
+      // Timer
+      if (s.phase === 4 || s.totalSeconds === 0) {
+        timer.textContent = "";
+      } else {
+        timer.textContent = formatTime(Math.max(0, s.secondsLeft));
+        timer.classList.toggle("timer-small", s.totalSeconds <= 60);
+      }
+
+      // Flash only when running and not paused
+      if (s.running && !s.paused) {
+        container.classList.add("flashing");
+      } else {
+        container.classList.remove("flashing");
+      }
+
+      // Loud overlay
+      if (s.loudMessageActive) {
+        loudOverlay.classList.add("show");
+      } else {
+        loudOverlay.classList.remove("show");
+      }
+    });
+
+    // Ding on every transition
+    socket.on("transition", () => {
+      playDing();
+    });
+
+    // Ding + show immediately when loud command fires
+    socket.on("loud", () => {
+      playDing();
+      loudOverlay.classList.add("show");
+    });
+  </script>
+</body>
+</html>
