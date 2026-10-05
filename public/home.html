@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cafeteria & Prayer Hall Management</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body {
+      height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f2a3a;
+      color: #e6f4f7;
+    }
+
+    .container {
+      min-height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      gap: 24px;
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 800;
+      text-align: center;
+      color: #5dc1d1;
+      margin-bottom: 8px;
+    }
+
+    .subtitle {
+      font-size: 15px;
+      text-align: center;
+      opacity: 0.7;
+      margin-bottom: 24px;
+    }
+
+    .menu {
+      display: flex;
+      flex-direction: column;
+      gap: 20px;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    a.button {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 20px;
+      border-radius: 16px;
+      text-decoration: none;
+      color: #e6f4f7;
+      background: #1a4055;
+      border: 2px solid #2a7d8f;
+      transition: transform 0.15s, background 0.2s;
+      min-height: 120px;
+    }
+
+    a.button:hover, a.button:active {
+      transform: scale(0.98);
+      background: #2a7d8f;
+    }
+
+    a.button .icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+    }
+
+    a.button .label {
+      font-size: 22px;
+      font-weight: 800;
+      margin-bottom: 4px;
+    }
+
+    a.button .desc {
+      font-size: 13px;
+      opacity: 0.75;
+      text-align: center;
+    }
+
+    .footer {
+      font-size: 12px;
+      opacity: 0.5;
+      margin-top: 20px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div>
+      <h1>Student Management System</h1>
+      <p class="subtitle">Choose a system</p>
+    </div>
+
+    <div class="menu">
+      <a class="button" href="/cafeteria/control">
+        <div class="icon">🍽️</div>
+        <div class="label">Cafeteria</div>
+        <div class="desc">Manage lunch flow and dismissal</div>
+      </a>
+
+      <a class="button" href="/prayer/control">
+        <div class="icon">🕌</div>
+        <div class="label">Prayer Hall</div>
+        <div class="desc">Manage names and class dismissal</div>
+      </a>
+    </div>
+
+    <div class="footer">Tap one of the options above</div>
+  </div>
+</body>
+</html>

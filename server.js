@@ -1,7 +1,12 @@
 // ============================================================
 // SERVER.JS — The engine
-// Runs the timer, accepts commands, broadcasts state to all
-// connected screens (big screen + phone controller).
+// Serves:
+//   /                    → home menu (choose cafeteria or prayer hall)
+//   /cafeteria/screen    → cafeteria big screen
+//   /cafeteria/control   → cafeteria phone controller
+//   /prayer/screen       → prayer hall big screen (placeholder for now)
+//   /prayer/control      → prayer hall phone controller (placeholder for now)
+//   /ping                → keep-alive endpoint
 // ============================================================
 
 import express from "express";
@@ -19,8 +24,32 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ---- Serve the files in the "public" folder ----
+// ---- Serve static assets (css, js, images) from /public ----
 app.use(express.static(path.join(__dirname, "public")));
+
+// ---- Friendly URLs ----
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "home.html"));
+});
+
+app.get("/cafeteria/screen", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "screen.html"));
+});
+
+app.get("/cafeteria/control", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "control.html"));
+});
+
+// These two are placeholders — they'll be replaced when we build the
+// prayer hall pages. For now, they just redirect to home so nothing
+// 404s when you tap the button on the home page.
+app.get("/prayer/screen", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "home.html"));
+});
+
+app.get("/prayer/control", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "home.html"));
+});
 
 // ---- The one and only state ----
 let state = createInitialState();
@@ -57,7 +86,6 @@ function startTimerLoop() {
       return;
     }
 
-    // Handle "voices too loud" auto-dismiss
     if (state.loudMessageActive && Date.now() >= state.loudMessageEndsAt) {
       state.loudMessageActive = false;
       broadcast();
@@ -65,7 +93,6 @@ function startTimerLoop() {
 
     const step = state.sequence[state.currentIndex];
     if (step.seconds === 0) {
-      // End screen — no countdown
       return;
     }
 
@@ -88,7 +115,6 @@ function advanceStep() {
     io.emit("transition", { label: step.label });
     broadcast();
   } else {
-    // Already at the end
     state.secondsLeft = 0;
     broadcast();
   }
@@ -98,10 +124,8 @@ function advanceStep() {
 io.on("connection", (socket) => {
   console.log("Client connected:", socket.id);
 
-  // Send current state immediately
   socket.emit("state", publicState());
 
-  // ---- Commands from the phone ----
   socket.on("command", (cmd) => {
     console.log("Command received:", cmd);
 
@@ -130,7 +154,6 @@ io.on("connection", (socket) => {
         break;
 
       case "quiet":
-        // Jump to quiet time (find index of phase 2 step)
         state.currentIndex = state.sequence.findIndex((s) => s.phase === 2);
         state.secondsLeft = state.sequence[state.currentIndex].seconds;
         state.running = true;
@@ -141,7 +164,6 @@ io.on("connection", (socket) => {
         break;
 
       case "exitPhase":
-        // Jump to first class in phase 3
         state.currentIndex = state.sequence.findIndex((s) => s.phase === 3);
         state.secondsLeft = state.sequence[state.currentIndex].seconds;
         state.running = true;
@@ -153,7 +175,7 @@ io.on("connection", (socket) => {
 
       case "loud":
         state.loudMessageActive = true;
-        state.loudMessageEndsAt = Date.now() + 5000; // 5 seconds
+        state.loudMessageEndsAt = Date.now() + 5000;
         io.emit("loud");
         broadcast();
         break;
@@ -168,7 +190,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// ---- Keep-alive endpoint (for uptime monitors + self-ping) ----
+// ---- Keep-alive endpoint ----
 app.get("/ping", (req, res) => {
   res.status(200).send("pong");
 });
@@ -178,11 +200,9 @@ const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Cafeteria server running on http://localhost:${PORT}`);
 
-  // ---- Self-ping: keep Render's free tier awake ----
-  // Only runs when deployed (RENDER_EXTERNAL_URL is set by Render).
   const renderUrl = process.env.RENDER_EXTERNAL_URL;
   if (renderUrl) {
-    const PING_INTERVAL = 10 * 60 * 1000; // every 10 minutes
+    const PING_INTERVAL = 10 * 60 * 1000;
     setInterval(() => {
       fetch(`${renderUrl}/ping`)
         .then(() => console.log("Self-ping sent:", new Date().toISOString()))
