@@ -96,3 +96,58 @@ export function createInitialState() {
     loudMessageEndsAt: null, // timestamp
   };
 }
+
+// ============================================================
+// PRAYER HALL STATE
+// ============================================================
+
+// ---- Order of classes dismissed from the prayer hall ----
+// Same as the cafeteria: m, h, s, f per grade.
+export const PRAYER_CLASSES = [
+  { name: "4M", seconds: 30 },
+  { name: "4H", seconds: 30 },
+  { name: "4S", seconds: 30 },
+  { name: "4F", seconds: 30 },
+  { name: "5M", seconds: 30 },
+  { name: "5H", seconds: 30 },
+  { name: "5S", seconds: 30 },
+  { name: "6M", seconds: 30 },
+  { name: "6H", seconds: 30 },
+  { name: "6S", seconds: 30 },
+  { name: "6F", seconds: 30 },
+];
+
+// ---- Build the dismissal sequence (same shape as cafeteria steps) ----
+export function buildPrayerDismissSequence() {
+  return PRAYER_CLASSES.map((c) => ({
+    phase: "dismiss",
+    label: c.name,
+    sublabel: "You may leave for your class",
+    seconds: c.seconds,
+    color: "#0d3b2e", // Islamic deep green
+  }));
+}
+
+// ---- Create a fresh prayer hall state ----
+// mode: "names" or "dismiss"
+//   "names"  → screen displays one of the three role names
+//   "dismiss" → screen shows the class-by-class dismissal
+export function createPrayerState() {
+  const dismissSequence = buildPrayerDismissSequence();
+  return {
+    mode: "names",
+    names: {
+      adhan: [],
+      iqamah: [],
+      athkar: [],
+    },
+    // Currently visible name slot: { role, index } or null
+    activeName: null,
+
+    dismissSequence,
+    dismissIndex: 0,
+    dismissSecondsLeft: dismissSequence[0].seconds,
+    dismissRunning: false,
+    dismissPaused: false,
+  };
+}

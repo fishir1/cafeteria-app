@@ -1,12 +1,16 @@
 // ============================================================
 // SERVER.JS — The engine
 // Serves:
-//   /                    → home menu (choose cafeteria or prayer hall)
+//   /                    → home menu
 //   /cafeteria/screen    → cafeteria big screen
 //   /cafeteria/control   → cafeteria phone controller
-//   /prayer/screen       → prayer hall big screen (placeholder for now)
-//   /prayer/control      → prayer hall phone controller (placeholder for now)
+//   /prayer/screen       → prayer hall big screen
+//   /prayer/control      → prayer hall phone controller
 //   /ping                → keep-alive endpoint
+//
+// Two independent Socket.IO namespaces:
+//   /          (default) → cafeteria
+//   /prayer              → prayer hall
 // ============================================================
 
 import express from "express";
@@ -14,7 +18,10 @@ import http from "http";
 import { Server } from "socket.io";
 import { fileURLToPath } from "url";
 import path from "path";
-import { createInitialState } from "./state.js";
+import {
+  createInitialState,
+  createPrayerState,
+} from "./state.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,38 +31,32 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ---- Serve static assets (css, js, images) from /public ----
+// ---- Serve static assets ----
 app.use(express.static(path.join(__dirname, "public")));
 
 // ---- Friendly URLs ----
 app.get("/", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "home.html"));
 });
-
 app.get("/cafeteria/screen", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "screen.html"));
 });
-
 app.get("/cafeteria/control", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "control.html"));
 });
-
-// These two are placeholders — they'll be replaced when we build the
-// prayer hall pages. For now, they just redirect to home so nothing
-// 404s when you tap the button on the home page.
 app.get("/prayer/screen", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "home.html"));
+  res.sendFile(path.join(__dirname, "public", "prayer-screen.html"));
 });
-
 app.get("/prayer/control", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "home.html"));
+  res.sendFile(path.join(__dirname, "public", "prayer-control.html"));
 });
 
-// ---- The one and only state ----
+// ============================================================
+// CAFETERIA  (default namespace)
+// ============================================================
 let state = createInitialState();
 let timerInterval = null;
 
-// ---- Helper: what the clients need to see ----
 function publicState() {
   const step = state.sequence[state.currentIndex];
   return {
@@ -73,18 +74,14 @@ function publicState() {
   };
 }
 
-// ---- Helper: broadcast current state ----
 function broadcast() {
   io.emit("state", publicState());
 }
 
-// ---- Start / reset the timer loop ----
 function startTimerLoop() {
   if (timerInterval) clearInterval(timerInterval);
   timerInterval = setInterval(() => {
-    if (!state.running || state.paused) {
-      return;
-    }
+    if (!state.running || state.paused) return;
 
     if (state.loudMessageActive && Date.now() >= state.loudMessageEndsAt) {
       state.loudMessageActive = false;
@@ -92,12 +89,9 @@ function startTimerLoop() {
     }
 
     const step = state.sequence[state.currentIndex];
-    if (step.seconds === 0) {
-      return;
-    }
+    if (step.seconds === 0) return;
 
     state.secondsLeft -= 1;
-
     if (state.secondsLeft <= 0) {
       advanceStep();
     } else {
@@ -106,7 +100,6 @@ function startTimerLoop() {
   }, 1000);
 }
 
-// ---- Move to the next step in the sequence ----
 function advanceStep() {
   if (state.currentIndex < state.sequence.length - 1) {
     state.currentIndex += 1;
@@ -120,14 +113,12 @@ function advanceStep() {
   }
 }
 
-// ---- Socket.io: what to do when a client connects ----
 io.on("connection", (socket) => {
-  console.log("Client connected:", socket.id);
-
+  console.log("[cafeteria] Client connected:", socket.id);
   socket.emit("state", publicState());
 
   socket.on("command", (cmd) => {
-    console.log("Command received:", cmd);
+    console.log("[cafeteria] Command:", cmd);
 
     switch (cmd) {
       case "start":
@@ -136,23 +127,19 @@ io.on("connection", (socket) => {
         startTimerLoop();
         broadcast();
         break;
-
       case "pause":
         state.paused = !state.paused;
         broadcast();
         break;
-
       case "next":
         advanceStep();
         break;
-
       case "reset":
         state = createInitialState();
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = null;
         broadcast();
         break;
-
       case "quiet":
         state.currentIndex = state.sequence.findIndex((s) => s.phase === 2);
         state.secondsLeft = state.sequence[state.currentIndex].seconds;
@@ -162,7 +149,6 @@ io.on("connection", (socket) => {
         io.emit("transition", { label: "Quiet Time" });
         broadcast();
         break;
-
       case "exitPhase":
         state.currentIndex = state.sequence.findIndex((s) => s.phase === 3);
         state.secondsLeft = state.sequence[state.currentIndex].seconds;
@@ -172,21 +158,161 @@ io.on("connection", (socket) => {
         io.emit("transition", { label: state.sequence[state.currentIndex].label });
         broadcast();
         break;
-
       case "loud":
         state.loudMessageActive = true;
         state.loudMessageEndsAt = Date.now() + 5000;
         io.emit("loud");
         broadcast();
         break;
-
-      default:
-        console.log("Unknown command:", cmd);
     }
   });
 
   socket.on("disconnect", () => {
-    console.log("Client disconnected:", socket.id);
+    console.log("[cafeteria] Client disconnected:", socket.id);
+  });
+});
+
+// ============================================================
+// PRAYER HALL  (namespace "/prayer")
+// ============================================================
+const prayer = createPrayerState();
+prayer.freeMessage = null;
+let prayerTimer = null;
+
+function prayerPublicState() {
+  const step = prayer.dismissSequence[prayer.dismissIndex];
+  return {
+    mode: prayer.mode,
+    activeName: prayer.activeName,
+    freeMessage: prayer.freeMessage,
+    dismissIndex: prayer.dismissIndex,
+    dismissTotal: prayer.dismissSequence.length,
+    dismissLabel: step ? step.label : "",
+    dismissSublabel: step ? step.sublabel : "",
+    dismissSecondsLeft: prayer.dismissSecondsLeft,
+    dismissTotalSeconds: step ? step.seconds : 0,
+    dismissRunning: prayer.dismissRunning,
+    dismissPaused: prayer.dismissPaused,
+  };
+}
+
+const prayerNs = io.of("/prayer");
+
+function prayerBroadcast() {
+  prayerNs.emit("state", prayerPublicState());
+}
+
+function startPrayerTimer() {
+  if (prayerTimer) clearInterval(prayerTimer);
+  prayerTimer = setInterval(() => {
+    if (prayer.mode !== "dismiss") return;
+    if (!prayer.dismissRunning || prayer.dismissPaused) return;
+
+    prayer.dismissSecondsLeft -= 1;
+
+    if (prayer.dismissSecondsLeft <= 0) {
+      if (prayer.dismissIndex < prayer.dismissSequence.length - 1) {
+        prayer.dismissIndex += 1;
+        prayer.dismissSecondsLeft =
+          prayer.dismissSequence[prayer.dismissIndex].seconds;
+        prayerNs.emit("dismissTransition", {
+          label: prayer.dismissSequence[prayer.dismissIndex].label,
+        });
+        prayerBroadcast();
+      } else {
+        prayer.dismissRunning = false;
+        prayer.mode = "end";
+        prayerNs.emit("dismissEnd");
+        prayerBroadcast();
+      }
+    } else {
+      prayerBroadcast();
+    }
+  }, 1000);
+}
+
+prayerNs.on("connection", (socket) => {
+  console.log("[prayer] Client connected:", socket.id);
+  socket.emit("state", prayerPublicState());
+
+  socket.on("sendName", (payload) => {
+    const { role, name } = payload || {};
+    if (!role || !name) return;
+
+    prayer.mode = "names";
+    prayer.activeName = { role, name };
+    prayer.freeMessage = null;
+
+    prayerNs.emit("nameArrived", { role, name });
+    prayerBroadcast();
+    console.log("[prayer] Name sent:", role, "=", name);
+  });
+
+  socket.on("sendMessage", (payload) => {
+    const { text } = payload || {};
+    if (!text) return;
+    prayer.mode = "message";
+    prayer.freeMessage = text;
+    prayer.activeName = null;
+    prayerNs.emit("nameArrived", { role: "message", name: text });
+    prayerBroadcast();
+    console.log("[prayer] Message sent:", text);
+  });
+
+  socket.on("dingSeven", () => {
+    prayerNs.emit("dingSeven");
+    console.log("[prayer] Ding ×7 requested");
+  });
+
+  socket.on("startDismiss", () => {
+    prayer.mode = "dismiss";
+    prayer.dismissIndex = 0;
+    prayer.dismissSecondsLeft = prayer.dismissSequence[0].seconds;
+    prayer.dismissRunning = true;
+    prayer.dismissPaused = false;
+    startPrayerTimer();
+    prayerNs.emit("dismissTransition", {
+      label: prayer.dismissSequence[0].label,
+    });
+    prayerBroadcast();
+    console.log("[prayer] Dismissal started");
+  });
+
+  socket.on("nextClass", () => {
+    if (prayer.mode !== "dismiss") return;
+    if (prayer.dismissIndex < prayer.dismissSequence.length - 1) {
+      prayer.dismissIndex += 1;
+      prayer.dismissSecondsLeft =
+        prayer.dismissSequence[prayer.dismissIndex].seconds;
+      prayerNs.emit("dismissTransition", {
+        label: prayer.dismissSequence[prayer.dismissIndex].label,
+      });
+      prayerBroadcast();
+    } else {
+      prayer.dismissRunning = false;
+      prayer.mode = "end";
+      prayerNs.emit("dismissEnd");
+      prayerBroadcast();
+    }
+  });
+
+  socket.on("pauseDismiss", () => {
+    prayer.dismissPaused = !prayer.dismissPaused;
+    prayerBroadcast();
+  });
+
+  socket.on("resetPrayer", () => {
+    const fresh = createPrayerState();
+    Object.assign(prayer, fresh);
+    prayer.freeMessage = null;
+    if (prayerTimer) clearInterval(prayerTimer);
+    prayerTimer = null;
+    prayerBroadcast();
+    console.log("[prayer] Reset");
+  });
+
+  socket.on("disconnect", () => {
+    console.log("[prayer] Client disconnected:", socket.id);
   });
 });
 

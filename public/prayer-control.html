@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>Prayer Hall Control</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+    html, body {
+      min-height: 100%;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: #0f2a3a;
+      color: #e6f4f7;
+      overflow-y: auto;
+    }
+
+    .header {
+      padding: 16px;
+      text-align: center;
+      background: #1a4055;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      border-bottom: 1px solid #2a7d8f;
+    }
+    .header h1 { font-size: 18px; font-weight: 800; letter-spacing: 1px; }
+    .status {
+      font-size: 13px;
+      opacity: 0.7;
+      margin-top: 4px;
+    }
+    .status.connected { color: #5dc1d1; opacity: 1; }
+    .status.disconnected { color: #ff6b6b; opacity: 1; }
+
+    .section {
+      padding: 16px;
+      border-bottom: 1px solid #1a4055;
+    }
+
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      opacity: 0.6;
+      margin-bottom: 10px;
+    }
+
+    .name-block {
+      background: #1a4055;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .name-block .role {
+      font-size: 14px;
+      font-weight: 700;
+      color: #5dc1d1;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .name-block .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .name-block input {
+      flex: 1;
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #2a7d8f;
+      background: #0f2a3a;
+      color: #e6f4f7;
+      outline: none;
+      min-width: 0;
+    }
+    .name-block input:focus {
+      border-color: #5dc1d1;
+    }
+
+    .name-block button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: none;
+      background: #2a7d8f;
+      color: #e6f4f7;
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .name-block button:active {
+      transform: scale(0.96);
+      background: #5dc1d1;
+      color: #0f2a3a;
+    }
+
+    .buttons {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    button.control {
+      font-family: inherit;
+      font-size: 15px;
+      font-weight: 700;
+      padding: 18px 12px;
+      border: none;
+      border-radius: 12px;
+      color: #e6f4f7;
+      background: #2a7d8f;
+      cursor: pointer;
+      min-height: 60px;
+      user-select: none;
+      transition: transform 0.1s;
+    }
+    button.control:active {
+      transform: scale(0.96);
+      background: #5dc1d1;
+      color: #0f2a3a;
+    }
+
+    button.start { background: #2a7d8f; }
+    button.next  { background: #2a7d8f; }
+    button.pause { background: #3a6b7d; }
+    button.reset { background: #7d3a3a; }
+    button.clear { background: #4a4a4a; }
+
+    .status-panel {
+      padding: 16px;
+      text-align: center;
+      background: #1a4055;
+      border-top: 1px solid #2a7d8f;
+      border-bottom: 1px solid #2a7d8f;
+    }
+    .status-panel .mode {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      opacity: 0.6;
+      margin-bottom: 4px;
+    }
+    .status-panel .current {
+      font-size: 20px;
+      font-weight: 800;
+    }
+
+    .footer-note {
+      padding: 16px;
+      text-align: center;
+      font-size: 12px;
+      opacity: 0.5;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🕌 Prayer Hall Control</h1>
+    <div class="status" id="status">Connecting…</div>
+  </div>
+
+  <div class="status-panel">
+    <div class="mode" id="mode">Mode</div>
+    <div class="current" id="current">—</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Send a name to the screen</div>
+
+    <div class="name-block">
+      <div class="role">Adhan</div>
+      <div class="row">
+        <input type="text" id="inputAdhan" placeholder="Type student name…" />
+        <button data-role="adhan">Send</button>
+      </div>
+    </div>
+
+    <div class="name-block">
+      <div class="role">Iqamah</div>
+      <div class="row">
+        <input type="text" id="inputIqamah" placeholder="Type student name…" />
+        <button data-role="iqamah">Send</button>
+      </div>
+    </div>
+
+    <div class="name-block">
+      <div class="role">Athkar</div>
+      <div class="row">
+        <input type="text" id="inputAthkar" placeholder="Type student name…" />
+        <button data-role="athkar">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Free message to the screen</div>
+
+    <div class="name-block">
+      <div class="role">Message</div>
+      <div class="row">
+        <input type="text" id="inputMessage" placeholder="Type any message…" />
+        <button id="btnSendMessage">Send</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="buttons">
+    <div class="section-title" style="grid-column: 1/-1;">Dismissal controls</div>
+    <button class="control start" id="btnStart">▶️ Start Dismissal</button>
+    <button class="control next" id="btnNext">⏭️ Next Class</button>
+    <button class="control pause" id="btnPause">⏸️ Pause</button>
+    <button class="control reset" id="btnReset">🔄 Reset</button>
+    <button class="control clear" id="btnClear" style="grid-column: 1/-1;">🧹 Clear All</button>
+    <button class="control start" id="btnDing7" style="grid-column: 1/-1;">🔔 Ding ×7</button>
+  </div>
+
+  <div class="footer-note">
+    All names clear automatically after dismissal ends.
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const socket = io("/prayer");
+
+    const status = document.getElementById("status");
+    const modeEl = document.getElementById("mode");
+    const currentEl = document.getElementById("current");
+
+    const inputAdhan = document.getElementById("inputAdhan");
+    const inputIqamah = document.getElementById("inputIqamah");
+    const inputAthkar = document.getElementById("inputAthkar");
+    const inputMessage = document.getElementById("inputMessage");
+
+    // ---- Send name buttons ----
+    document.querySelectorAll(".name-block button[data-role]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const role = btn.dataset.role;
+        let input;
+        if (role === "adhan") input = inputAdhan;
+        else if (role === "iqamah") input = inputIqamah;
+        else input = inputAthkar;
+
+        const name = input.value.trim();
+        if (!name) return;
+
+        socket.emit("sendName", { role, name });
+        if (navigator.vibrate) navigator.vibrate(30);
+      });
+    });
+
+    // ---- Enter key submits in all name boxes ----
+    [inputAdhan, inputIqamah, inputAthkar].forEach((inp) => {
+      inp.addEventListener("keydown", (e) => {
+        if (e.key === "Enter") {
+          inp.parentElement.querySelector("button[data-role]").click();
+        }
+      });
+    });
+
+    // ---- Free message ----
+    document.getElementById("btnSendMessage").addEventListener("click", () => {
+      const text = inputMessage.value.trim();
+      if (!text) return;
+      socket.emit("sendMessage", { text });
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+    inputMessage.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") {
+        document.getElementById("btnSendMessage").click();
+      }
+    });
+
+    // ---- Dismissal controls ----
+    document.getElementById("btnStart").addEventListener("click", () => {
+      socket.emit("startDismiss");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+    document.getElementById("btnNext").addEventListener("click", () => {
+      socket.emit("nextClass");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+    document.getElementById("btnPause").addEventListener("click", () => {
+      socket.emit("pauseDismiss");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+    document.getElementById("btnReset").addEventListener("click", () => {
+      socket.emit("resetPrayer");
+      inputAdhan.value = "";
+      inputIqamah.value = "";
+      inputAthkar.value = "";
+      inputMessage.value = "";
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+
+    // ---- Clear All ----
+    document.getElementById("btnClear").addEventListener("click", () => {
+      inputAdhan.value = "";
+      inputIqamah.value = "";
+      inputAthkar.value = "";
+      inputMessage.value = "";
+      socket.emit("resetPrayer");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+
+    // ---- Ding ×7 ----
+    document.getElementById("btnDing7").addEventListener("click", () => {
+      socket.emit("dingSeven");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+
+    // ---- Connection status ----
+    socket.on("connect", () => {
+      status.textContent = "Connected";
+      status.className = "status connected";
+    });
+    socket.on("disconnect", () => {
+      status.textContent = "Disconnected — retrying…";
+      status.className = "status disconnected";
+    });
+
+    // ---- Update status panel ----
+    socket.on("state", (s) => {
+      if (s.mode === "dismiss") {
+        modeEl.textContent = "Dismissing";
+        currentEl.textContent =
+          s.dismissLabel + "  ·  " + Math.max(0, s.dismissSecondsLeft) + "s" +
+          "  (" + (s.dismissIndex + 1) + "/" + s.dismissTotal + ")";
+      } else if (s.mode === "end") {
+        modeEl.textContent = "Complete";
+        currentEl.textContent = "Please return to classes quietly";
+      } else if (s.mode === "message" && s.freeMessage) {
+        modeEl.textContent = "Showing message";
+        currentEl.textContent = s.freeMessage;
+      } else if (s.mode === "names" && s.activeName) {
+        modeEl.textContent = "Showing name";
+        const titles = { adhan: "Adhan", iqamah: "Iqamah", athkar: "Athkar" };
+        currentEl.textContent =
+          (titles[s.activeName.role] || "") + " — " + s.activeName.name;
+      } else {
+        modeEl.textContent = "Ready";
+        currentEl.textContent = "Type a name to send";
+      }
+    });
+  </script>
+</body>
+</html>
