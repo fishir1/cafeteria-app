@@ -186,7 +186,10 @@ io.on("connection", (socket) => {
 // ============================================================
 const prayer = createPrayerState();
 prayer.freeMessage = null;
+prayer.loudMessageActive = false;
+prayer.loudMessageEndsAt = null;
 let prayerTimer = null;
+let prayerLoudTimer = null;
 
 function prayerPublicState() {
   const step = prayer.dismissSequence[prayer.dismissIndex];
@@ -194,6 +197,7 @@ function prayerPublicState() {
     mode: prayer.mode,
     activeName: prayer.activeName,
     freeMessage: prayer.freeMessage,
+    loudMessageActive: prayer.loudMessageActive,
     dismissIndex: prayer.dismissIndex,
     dismissTotal: prayer.dismissSequence.length,
     dismissLabel: step ? step.label : "",
@@ -247,9 +251,9 @@ prayerNs.on("connection", (socket) => {
   socket.on("sendName", (payload) => {
     const { role, name } = payload || {};
     if (!role || !name) return;
+    // Store the name, but DO NOT clear any active free message.
     prayer.mode = "names";
     prayer.activeName = { role, name };
-    prayer.freeMessage = null;
     prayerNs.emit("nameArrived", { role, name });
     prayerBroadcast();
     console.log("[prayer] Name:", role, "=", name);
@@ -258,17 +262,35 @@ prayerNs.on("connection", (socket) => {
   socket.on("sendMessage", (payload) => {
     const { text } = payload || {};
     if (!text) return;
-    prayer.mode = "message";
     prayer.freeMessage = text;
-    prayer.activeName = null;
+    // Don't change mode — message overrides display regardless of mode
     prayerNs.emit("nameArrived", { role: "message", name: text });
     prayerBroadcast();
     console.log("[prayer] Message:", text);
   });
 
+  socket.on("clearPrayerMessage", () => {
+    prayer.freeMessage = null;
+    prayerBroadcast();
+    console.log("[prayer] Message cleared");
+  });
+
   socket.on("dingSeven", () => {
     prayerNs.emit("dingSeven");
     console.log("[prayer] Ding x7");
+  });
+
+  socket.on("loudPrayer", () => {
+    prayer.loudMessageActive = true;
+    prayer.loudMessageEndsAt = Date.now() + 5000;
+    prayerNs.emit("loud");
+    prayerBroadcast();
+    if (prayerLoudTimer) clearTimeout(prayerLoudTimer);
+    prayerLoudTimer = setTimeout(() => {
+      prayer.loudMessageActive = false;
+      prayerBroadcast();
+    }, 5000);
+    console.log("[prayer] Voices Too Loud");
   });
 
   socket.on("startDismiss", () => {
@@ -312,8 +334,12 @@ prayerNs.on("connection", (socket) => {
     const fresh = createPrayerState();
     Object.assign(prayer, fresh);
     prayer.freeMessage = null;
+    prayer.loudMessageActive = false;
+    prayer.loudMessageEndsAt = null;
     if (prayerTimer) clearInterval(prayerTimer);
     prayerTimer = null;
+    if (prayerLoudTimer) clearTimeout(prayerLoudTimer);
+    prayerLoudTimer = null;
     prayerBroadcast();
     console.log("[prayer] Reset");
   });

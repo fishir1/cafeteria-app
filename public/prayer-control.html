@@ -78,9 +78,7 @@
       outline: none;
       min-width: 0;
     }
-    .name-block input:focus {
-      border-color: #5dc1d1;
-    }
+    .name-block input:focus { border-color: #5dc1d1; }
 
     .name-block button {
       font-family: inherit;
@@ -211,6 +209,10 @@
         <button id="btnSendMessage">Send</button>
       </div>
     </div>
+
+    <button class="control start" id="btnShowSequence" style="width: 100%; margin-top: 8px;">
+      ⬅️ Back to Sequence
+    </button>
   </div>
 
   <div class="buttons">
@@ -220,7 +222,14 @@
     <button class="control pause" id="btnPause">⏸️ Pause</button>
     <button class="control reset" id="btnReset">🔄 Reset</button>
     <button class="control clear" id="btnClear" style="grid-column: 1/-1;">🧹 Clear All</button>
-    <button class="control start" id="btnDing7" style="grid-column: 1/-1;">🔔 Ding ×7</button>
+
+    <div class="section-title" style="grid-column: 1/-1;">Attention</div>
+    <button class="control reset" id="btnLoud" style="grid-column: 1/-1;">
+      🔇 Voices Too Loud
+    </button>
+    <button class="control start" id="btnDing7" style="grid-column: 1/-1;">
+      🔔 Ding ×7
+    </button>
   </div>
 
   <div class="footer-note">
@@ -240,7 +249,6 @@
     const inputAthkar = document.getElementById("inputAthkar");
     const inputMessage = document.getElementById("inputMessage");
 
-    // ---- Send name buttons ----
     document.querySelectorAll(".name-block button[data-role]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const role = btn.dataset.role;
@@ -251,13 +259,11 @@
 
         const name = input.value.trim();
         if (!name) return;
-
         socket.emit("sendName", { role, name });
         if (navigator.vibrate) navigator.vibrate(30);
       });
     });
 
-    // ---- Enter key submits in all name boxes ----
     [inputAdhan, inputIqamah, inputAthkar].forEach((inp) => {
       inp.addEventListener("keydown", (e) => {
         if (e.key === "Enter") {
@@ -266,7 +272,6 @@
       });
     });
 
-    // ---- Free message ----
     document.getElementById("btnSendMessage").addEventListener("click", () => {
       const text = inputMessage.value.trim();
       if (!text) return;
@@ -274,12 +279,15 @@
       if (navigator.vibrate) navigator.vibrate(30);
     });
     inputMessage.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") {
-        document.getElementById("btnSendMessage").click();
-      }
+      if (e.key === "Enter") document.getElementById("btnSendMessage").click();
     });
 
-    // ---- Dismissal controls ----
+    // Back to sequence
+    document.getElementById("btnShowSequence").addEventListener("click", () => {
+      socket.emit("clearPrayerMessage");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+
     document.getElementById("btnStart").addEventListener("click", () => {
       socket.emit("startDismiss");
       if (navigator.vibrate) navigator.vibrate(30);
@@ -300,8 +308,6 @@
       inputMessage.value = "";
       if (navigator.vibrate) navigator.vibrate(30);
     });
-
-    // ---- Clear All ----
     document.getElementById("btnClear").addEventListener("click", () => {
       inputAdhan.value = "";
       inputIqamah.value = "";
@@ -311,13 +317,18 @@
       if (navigator.vibrate) navigator.vibrate(30);
     });
 
-    // ---- Ding ×7 ----
+    // Voices Too Loud
+    document.getElementById("btnLoud").addEventListener("click", () => {
+      socket.emit("loudPrayer");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+
+    // Ding ×7
     document.getElementById("btnDing7").addEventListener("click", () => {
       socket.emit("dingSeven");
       if (navigator.vibrate) navigator.vibrate(30);
     });
 
-    // ---- Connection status ----
     socket.on("connect", () => {
       status.textContent = "Connected";
       status.className = "status connected";
@@ -327,8 +338,12 @@
       status.className = "status disconnected";
     });
 
-    // ---- Update status panel ----
     socket.on("state", (s) => {
+      if (s.freeMessage) {
+        modeEl.textContent = "Message showing";
+        currentEl.textContent = s.freeMessage;
+        return;
+      }
       if (s.mode === "dismiss") {
         modeEl.textContent = "Dismissing";
         currentEl.textContent =
@@ -337,9 +352,6 @@
       } else if (s.mode === "end") {
         modeEl.textContent = "Complete";
         currentEl.textContent = "Please return to classes quietly";
-      } else if (s.mode === "message" && s.freeMessage) {
-        modeEl.textContent = "Showing message";
-        currentEl.textContent = s.freeMessage;
       } else if (s.mode === "names" && s.activeName) {
         modeEl.textContent = "Showing name";
         const titles = { adhan: "Adhan", iqamah: "Iqamah", athkar: "Athkar" };

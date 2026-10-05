@@ -6,7 +6,7 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
 
-        :root {
+    :root {
       --deep-green: #0f2a3a;
       --mid-green: #1a4055;
       --gold: #5dc1d1;
@@ -23,7 +23,6 @@
       color: var(--cream);
     }
 
-    /* ---- Subtle geometric pattern in the background ---- */
     .pattern {
       position: fixed;
       inset: 0;
@@ -37,7 +36,6 @@
       pointer-events: none;
     }
 
-    /* ---- Intense 5-second flash overlay ---- */
     .flash-overlay {
       position: fixed;
       inset: 0;
@@ -55,7 +53,6 @@
       50% { opacity: 0.35; }
     }
 
-    /* ---- Content ---- */
     .content {
       position: relative;
       z-index: 1;
@@ -88,7 +85,6 @@
       margin-bottom: 40px;
     }
 
-    /* Dismiss mode */
     .class-label {
       font-size: 18vw;
       font-weight: 900;
@@ -114,7 +110,6 @@
       text-shadow: 0 8px 30px rgba(0,0,0,0.6);
     }
 
-    /* End mode */
     .end-message {
       font-size: 8vw;
       font-weight: 800;
@@ -124,7 +119,16 @@
       line-height: 1.2;
     }
 
-    /* Idle / waiting */
+    .message-mode {
+      font-size: 9vw;
+      font-weight: 900;
+      line-height: 1.15;
+      padding: 0 40px;
+      text-align: center;
+      color: var(--cream);
+      text-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+
     .idle {
       font-size: 3vw;
       color: var(--gold);
@@ -132,7 +136,32 @@
       letter-spacing: 3px;
     }
 
-    /* ---- Pre-start (unlock audio) ---- */
+    /* ---- Voices Too Loud overlay ---- */
+    .loud-overlay {
+      position: fixed;
+      inset: 0;
+      background: #b00020;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      animation: loudFlash 0.6s infinite;
+    }
+    .loud-overlay.show { display: flex; }
+    .loud-overlay .icon { font-size: 20vw; margin-bottom: 20px; }
+    .loud-overlay .text {
+      font-size: 6vw;
+      font-weight: 900;
+      text-align: center;
+      padding: 0 40px;
+      color: #fff;
+    }
+    @keyframes loudFlash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+
     .prestart {
       position: fixed;
       inset: 0;
@@ -171,24 +200,28 @@
     <div class="idle" id="idle">Waiting for names…</div>
   </div>
 
+  <div class="loud-overlay" id="loudOverlay">
+    <div class="icon">🔇</div>
+    <div class="text">Please lower your voices</div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script>
-    // Connect specifically to the /prayer namespace
     const socket = io("/prayer");
 
     const prestart = document.getElementById("prestart");
     const content = document.getElementById("content");
     const flashOverlay = document.getElementById("flashOverlay");
+    const loudOverlay = document.getElementById("loudOverlay");
 
     let audioReady = false;
 
-    // Tap to enable audio
     prestart.addEventListener("click", () => {
       audioReady = true;
       prestart.classList.add("hidden");
+      ensureAudioCtx();
     });
 
-    // ---- High-pitched ding (Web Audio API) ----
     let audioCtx = null;
     function ensureAudioCtx() {
       if (!audioCtx) {
@@ -219,7 +252,12 @@
       osc.stop(now + 0.5);
     }
 
-    // ---- 5-second intense flash on arrival ----
+    function playDing3Times() {
+      playHighDing();
+      setTimeout(playHighDing, 500);
+      setTimeout(playHighDing, 1000);
+    }
+
     function triggerIntenseFlash() {
       flashOverlay.classList.add("active");
       setTimeout(() => {
@@ -227,7 +265,6 @@
       }, 5000);
     }
 
-    // ---- Display helpers ----
     function showIdle() {
       content.innerHTML = '<div class="idle">Waiting for names…</div>';
     }
@@ -255,17 +292,21 @@
         '<div class="end-message">Please return to classes quietly</div>';
     }
 
-        function showMessage(text) {
-      content.innerHTML =
-        '<div class="end-message">' + text + '</div>';
+    function showMessage(text) {
+      content.innerHTML = '<div class="message-mode">' + text + '</div>';
     }
 
-    // ---- Socket events ----
     socket.on("connect", () => {
       console.log("Prayer screen connected");
     });
 
     socket.on("state", (s) => {
+      // Free message overrides EVERYTHING until cleared
+      if (s.freeMessage) {
+        showMessage(s.freeMessage);
+        return;
+      }
+
       if (s.mode === "dismiss") {
         showDismiss(
           s.dismissLabel,
@@ -274,8 +315,6 @@
         );
       } else if (s.mode === "end") {
         showEnd();
-      } else if (s.mode === "message" && s.freeMessage) {
-        showMessage(s.freeMessage);
       } else if (s.mode === "names" && s.activeName) {
         showName(s.activeName.role, s.activeName.name);
       } else {
@@ -283,26 +322,36 @@
       }
     });
 
-    // New name arrived — flash + ding
-    socket.on("nameArrived", (data) => {
+    socket.on("nameArrived", () => {
       playHighDing();
       triggerIntenseFlash();
     });
 
-    // Class transition during dismissal — ding + 5s flash
     socket.on("dismissTransition", () => {
       playHighDing();
       triggerIntenseFlash();
     });
 
-    // Dismissal ended
     socket.on("dismissEnd", () => {
       playHighDing();
     });
-        // Ding ×7 (button triggered)
+
     socket.on("dingSeven", () => {
       for (let i = 0; i < 7; i++) {
         setTimeout(playHighDing, i * 320);
+      }
+    });
+
+    socket.on("loud", () => {
+      playDing3Times();
+      loudOverlay.classList.add("show");
+    });
+
+    // Loud overlay auto-dismiss (server clears the flag, but keep
+    // a local fallback timer in case of missed events)
+    socket.on("state", (s) => {
+      if (!s.loudMessageActive) {
+        loudOverlay.classList.remove("show");
       }
     });
   </script>
