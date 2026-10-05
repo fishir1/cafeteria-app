@@ -4,46 +4,76 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Cafeteria & Prayer Hall Management</title>
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
+  <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/site.webmanifest" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Cafeteria" />
+  <meta name="theme-color" content="#0f2a3a" />
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     html, body {
-      height: 100%;
+      min-height: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #0f2a3a;
       color: #e6f4f7;
     }
 
     .container {
-      min-height: 100%;
+      min-height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       padding: 24px;
-      gap: 24px;
+      gap: 20px;
     }
 
     h1 {
-      font-size: 28px;
+      font-size: 26px;
       font-weight: 800;
       text-align: center;
       color: #5dc1d1;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
     }
 
     .subtitle {
-      font-size: 15px;
+      font-size: 14px;
       text-align: center;
       opacity: 0.7;
-      margin-bottom: 24px;
+      margin-bottom: 12px;
     }
 
     .menu {
       display: flex;
       flex-direction: column;
-      gap: 20px;
+      gap: 16px;
       width: 100%;
-      max-width: 420px;
+      max-width: 460px;
+    }
+
+    .group {
+      background: #1a4055;
+      border-radius: 16px;
+      padding: 16px;
+      border: 1px solid #2a7d8f;
+    }
+
+    .group-title {
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #5dc1d1;
+      text-align: center;
+      margin-bottom: 12px;
+    }
+
+    .group-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
     }
 
     a.button {
@@ -51,42 +81,36 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 32px 20px;
-      border-radius: 16px;
+      padding: 18px 8px;
+      border-radius: 12px;
       text-decoration: none;
       color: #e6f4f7;
-      background: #1a4055;
-      border: 2px solid #2a7d8f;
+      background: #2a7d8f;
       transition: transform 0.15s, background 0.2s;
-      min-height: 120px;
+      min-height: 96px;
+      text-align: center;
     }
 
     a.button:hover, a.button:active {
-      transform: scale(0.98);
-      background: #2a7d8f;
+      transform: scale(0.97);
+      background: #5dc1d1;
+      color: #0f2a3a;
     }
 
     a.button .icon {
-      font-size: 48px;
-      margin-bottom: 10px;
+      font-size: 30px;
+      margin-bottom: 6px;
     }
 
     a.button .label {
-      font-size: 22px;
-      font-weight: 800;
-      margin-bottom: 4px;
-    }
-
-    a.button .desc {
-      font-size: 13px;
-      opacity: 0.75;
-      text-align: center;
+      font-size: 14px;
+      font-weight: 700;
     }
 
     .footer {
       font-size: 12px;
       opacity: 0.5;
-      margin-top: 20px;
+      margin-top: 12px;
       text-align: center;
     }
   </style>
@@ -95,24 +119,42 @@
   <div class="container">
     <div>
       <h1>Student Management System</h1>
-      <p class="subtitle">Choose a system</p>
+      <p class="subtitle">Choose a screen or controller</p>
     </div>
 
     <div class="menu">
-      <a class="button" href="/cafeteria/control">
-        <div class="icon">🍽️</div>
-        <div class="label">Cafeteria</div>
-        <div class="desc">Manage lunch flow and dismissal</div>
-      </a>
 
-      <a class="button" href="/prayer/control">
-        <div class="icon">🕌</div>
-        <div class="label">Prayer Hall</div>
-        <div class="desc">Manage names and class dismissal</div>
-      </a>
+      <div class="group">
+        <div class="group-title">🍽️ Cafeteria</div>
+        <div class="group-buttons">
+          <a class="button" href="/cafeteria/screen">
+            <div class="icon">📺</div>
+            <div class="label">Screen</div>
+          </a>
+          <a class="button" href="/cafeteria/control">
+            <div class="icon">📱</div>
+            <div class="label">Control</div>
+          </a>
+        </div>
+      </div>
+
+      <div class="group">
+        <div class="group-title">🕌 Prayer Hall</div>
+        <div class="group-buttons">
+          <a class="button" href="/prayer/screen">
+            <div class="icon">📺</div>
+            <div class="label">Screen</div>
+          </a>
+          <a class="button" href="/prayer/control">
+            <div class="icon">📱</div>
+            <div class="label">Control</div>
+          </a>
+        </div>
+      </div>
+
     </div>
 
-    <div class="footer">Tap one of the options above</div>
+    <div class="footer">Tap any option to open it</div>
   </div>
 </body>
 </html>
