@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Prayer Hall Screen</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/site.webmanifest" />
@@ -74,9 +74,9 @@
     }
 
     .role-title {
-      font-size: 4vw;
+      font-size: 5vw;
       font-weight: 600;
-      letter-spacing: 6px;
+      letter-spacing: 8px;
       color: var(--gold);
       text-transform: uppercase;
       margin-bottom: 40px;
@@ -84,7 +84,7 @@
     }
 
     .student-name {
-      font-size: 14vw;
+      font-size: 16vw;
       font-weight: 900;
       line-height: 1;
       color: var(--cream);
@@ -93,7 +93,7 @@
     }
 
     .class-label {
-      font-size: 18vw;
+      font-size: 20vw;
       font-weight: 900;
       line-height: 1;
       color: var(--cream);
@@ -102,7 +102,7 @@
     }
 
     .class-sublabel {
-      font-size: 2.5vw;
+      font-size: 3vw;
       opacity: 0.85;
       color: var(--gold);
       margin-bottom: 40px;
@@ -110,7 +110,7 @@
     }
 
     .class-timer {
-      font-size: 12vw;
+      font-size: 14vw;
       font-weight: 900;
       font-variant-numeric: tabular-nums;
       color: var(--light-gold);
@@ -118,7 +118,7 @@
     }
 
     .end-message {
-      font-size: 8vw;
+      font-size: 9vw;
       font-weight: 800;
       text-align: center;
       color: var(--cream);
@@ -127,7 +127,7 @@
     }
 
     .message-mode {
-      font-size: 9vw;
+      font-size: 11vw;
       font-weight: 900;
       line-height: 1.15;
       padding: 0 40px;
@@ -137,13 +137,12 @@
     }
 
     .idle {
-      font-size: 3vw;
+      font-size: 3.5vw;
       color: var(--gold);
       opacity: 0.7;
       letter-spacing: 3px;
     }
 
-    /* ---- Voices Too Loud overlay ---- */
     .loud-overlay {
       position: fixed;
       inset: 0;
@@ -308,7 +307,6 @@
     });
 
     socket.on("state", (s) => {
-      // Free message overrides EVERYTHING until cleared
       if (s.freeMessage) {
         showMessage(s.freeMessage);
         return;
@@ -326,6 +324,10 @@
         showName(s.activeName.role, s.activeName.name);
       } else {
         showIdle();
+      }
+
+      if (!s.loudMessageActive) {
+        loudOverlay.classList.remove("show");
       }
     });
 
@@ -352,14 +354,6 @@
     socket.on("loud", () => {
       playDing3Times();
       loudOverlay.classList.add("show");
-    });
-
-    // Loud overlay auto-dismiss (server clears the flag, but keep
-    // a local fallback timer in case of missed events)
-    socket.on("state", (s) => {
-      if (!s.loudMessageActive) {
-        loudOverlay.classList.remove("show");
-      }
     });
   </script>
 </body>

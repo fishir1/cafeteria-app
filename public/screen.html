@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Cafeteria Screen</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/site.webmanifest" />
@@ -33,7 +33,7 @@
       50% { opacity: 0.45; }
     }
 
-    /* ---- 5-SECOND INTENSE FLASH OVERLAY (for free messages) ---- */
+    /* ---- 5-SECOND INTENSE FLASH OVERLAY ---- */
     .intense-flash {
       position: fixed;
       inset: 0;
@@ -65,7 +65,7 @@
     }
 
     .label {
-      font-size: 12vw;
+      font-size: 14vw;
       font-weight: 900;
       line-height: 1;
       margin-bottom: 30px;
@@ -73,7 +73,7 @@
     }
 
     .sublabel {
-      font-size: 3vw;
+      font-size: 3.5vw;
       font-weight: 400;
       opacity: 0.95;
       margin-bottom: 40px;
@@ -81,16 +81,16 @@
     }
 
     .timer {
-      font-size: 18vw;
+      font-size: 22vw;
       font-weight: 900;
       line-height: 1;
       font-variant-numeric: tabular-nums;
       text-shadow: 0 6px 20px rgba(0,0,0,0.5);
     }
-    .timer-small { font-size: 10vw; }
+    .timer-small { font-size: 12vw; }
 
     .message-mode {
-      font-size: 9vw;
+      font-size: 11vw;
       font-weight: 900;
       line-height: 1.15;
       padding: 0 40px;
@@ -178,7 +178,6 @@
       ensureAudioCtx();
     });
 
-    // ---- High-pitched ding (Web Audio API) ----
     let audioCtx = null;
     function ensureAudioCtx() {
       if (!audioCtx) {
@@ -255,14 +254,12 @@
     }
 
     socket.on("state", (s) => {
-      // Background color
       const newColor = s.color || "#222222";
       if (newColor !== currentColor) {
         currentColor = newColor;
         bgFlash.style.backgroundColor = newColor;
       }
 
-      // Detect new free message → ding x3 + 5s flash
       const newMessage = s.freeMessage || null;
       if (newMessage && newMessage !== lastFreeMessage) {
         playDing3Times();
@@ -270,14 +267,12 @@
       }
       lastFreeMessage = newMessage;
 
-      // Render either message or sequence
       if (s.freeMessage) {
         showMessage(s.freeMessage);
       } else {
         showSequence(s);
       }
 
-      // Background flash only while the sequence is running and not paused.
       const shouldFlash = s.running && !s.paused && s.phase !== 4;
       if (shouldFlash && !backgroundOn) {
         bgFlash.style.animationPlayState = "running";
@@ -289,7 +284,6 @@
         backgroundOn = false;
       }
 
-      // Loud overlay
       if (s.loudMessageActive) {
         loudOverlay.classList.add("show");
       } else {
