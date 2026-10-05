@@ -113,6 +113,7 @@ io.on("connection", (socket) => {
       case "start":
         state.running = true;
         state.paused = false;
+        io.emit("transition", { label: state.sequence[state.currentIndex].label });
         startTimerLoop();
         broadcast();
         break;
