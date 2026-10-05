@@ -1,16 +1,5 @@
 // ============================================================
 // SERVER.JS — The engine
-// Serves:
-//   /                    → home menu
-//   /cafeteria/screen    → cafeteria big screen
-//   /cafeteria/control   → cafeteria phone controller
-//   /prayer/screen       → prayer hall big screen
-//   /prayer/control      → prayer hall phone controller
-//   /ping                → keep-alive endpoint
-//
-// Two independent Socket.IO namespaces:
-//   /          (default) → cafeteria
-//   /prayer              → prayer hall
 // ============================================================
 
 import express from "express";
@@ -26,12 +15,10 @@ import {
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// ---- Set up web server ----
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
-// ---- Serve static assets ----
 app.use(express.static(path.join(__dirname, "public")));
 
 // ---- Friendly URLs ----
@@ -52,9 +39,10 @@ app.get("/prayer/control", (req, res) => {
 });
 
 // ============================================================
-// CAFETERIA  (default namespace)
+// CAFETERIA
 // ============================================================
 let state = createInitialState();
+state.freeMessage = null;
 let timerInterval = null;
 
 function publicState() {
@@ -71,6 +59,7 @@ function publicState() {
     currentIndex: state.currentIndex,
     totalSteps: state.sequence.length,
     loudMessageActive: state.loudMessageActive,
+    freeMessage: state.freeMessage,
   };
 }
 
@@ -136,6 +125,7 @@ io.on("connection", (socket) => {
         break;
       case "reset":
         state = createInitialState();
+        state.freeMessage = null;
         if (timerInterval) clearInterval(timerInterval);
         timerInterval = null;
         broadcast();
@@ -167,13 +157,32 @@ io.on("connection", (socket) => {
     }
   });
 
+  socket.on("sendCafeteriaMessage", (payload) => {
+    const { text } = payload || {};
+    if (!text) return;
+    state.freeMessage = text;
+    console.log("[cafeteria] Message:", text);
+    broadcast();
+  });
+
+  socket.on("clearCafeteriaMessage", () => {
+    state.freeMessage = null;
+    console.log("[cafeteria] Message cleared");
+    broadcast();
+  });
+
+  socket.on("dingSeven", () => {
+    io.emit("dingSeven");
+    console.log("[cafeteria] Ding x7");
+  });
+
   socket.on("disconnect", () => {
     console.log("[cafeteria] Client disconnected:", socket.id);
   });
 });
 
 // ============================================================
-// PRAYER HALL  (namespace "/prayer")
+// PRAYER HALL
 // ============================================================
 const prayer = createPrayerState();
 prayer.freeMessage = null;
@@ -238,14 +247,12 @@ prayerNs.on("connection", (socket) => {
   socket.on("sendName", (payload) => {
     const { role, name } = payload || {};
     if (!role || !name) return;
-
     prayer.mode = "names";
     prayer.activeName = { role, name };
     prayer.freeMessage = null;
-
     prayerNs.emit("nameArrived", { role, name });
     prayerBroadcast();
-    console.log("[prayer] Name sent:", role, "=", name);
+    console.log("[prayer] Name:", role, "=", name);
   });
 
   socket.on("sendMessage", (payload) => {
@@ -256,12 +263,12 @@ prayerNs.on("connection", (socket) => {
     prayer.activeName = null;
     prayerNs.emit("nameArrived", { role: "message", name: text });
     prayerBroadcast();
-    console.log("[prayer] Message sent:", text);
+    console.log("[prayer] Message:", text);
   });
 
   socket.on("dingSeven", () => {
     prayerNs.emit("dingSeven");
-    console.log("[prayer] Ding ×7 requested");
+    console.log("[prayer] Ding x7");
   });
 
   socket.on("startDismiss", () => {
@@ -316,12 +323,11 @@ prayerNs.on("connection", (socket) => {
   });
 });
 
-// ---- Keep-alive endpoint ----
+// ---- Keep-alive ----
 app.get("/ping", (req, res) => {
   res.status(200).send("pong");
 });
 
-// ---- Start the server ----
 const PORT = process.env.PORT || 3000;
 server.listen(PORT, () => {
   console.log(`Cafeteria server running on http://localhost:${PORT}`);

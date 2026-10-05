@@ -7,41 +7,108 @@
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
     html, body {
-      height: 100%;
+      min-height: 100%;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #111;
-      color: white;
+      background: #0f2a3a;
+      color: #e6f4f7;
       overflow-y: auto;
     }
 
     .header {
       padding: 16px;
       text-align: center;
-      background: #1a1a1a;
+      background: #1a4055;
       position: sticky;
       top: 0;
       z-index: 10;
-      border-bottom: 1px solid #333;
+      border-bottom: 1px solid #2a7d8f;
     }
-    .header h1 { font-size: 18px; font-weight: 700; }
+    .header h1 { font-size: 18px; font-weight: 800; letter-spacing: 1px; }
     .status {
       font-size: 13px;
       opacity: 0.7;
       margin-top: 4px;
     }
-    .status.connected { color: #4caf50; opacity: 1; }
-    .status.disconnected { color: #f44336; opacity: 1; }
+    .status.connected { color: #5dc1d1; opacity: 1; }
+    .status.disconnected { color: #ff6b6b; opacity: 1; }
 
     .current {
       padding: 20px;
       text-align: center;
-      background: #222;
-      border-bottom: 1px solid #333;
+      background: #1a4055;
+      border-bottom: 1px solid #2a7d8f;
     }
     .current .label { font-size: 28px; font-weight: 800; margin-bottom: 4px; }
     .current .sublabel { font-size: 13px; opacity: 0.7; margin-bottom: 10px; }
     .current .timer { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
     .current .phase { font-size: 12px; opacity: 0.6; margin-top: 4px; text-transform: uppercase; letter-spacing: 1px; }
+
+    .section {
+      padding: 16px;
+      border-bottom: 1px solid #1a4055;
+    }
+
+    .section-title {
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      opacity: 0.6;
+      margin-bottom: 10px;
+    }
+
+    .name-block {
+      background: #1a4055;
+      border-radius: 12px;
+      padding: 12px;
+      margin-bottom: 12px;
+    }
+
+    .name-block .role {
+      font-size: 14px;
+      font-weight: 700;
+      color: #5dc1d1;
+      margin-bottom: 8px;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+
+    .name-block .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    .name-block input {
+      flex: 1;
+      font-family: inherit;
+      font-size: 16px;
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid #2a7d8f;
+      background: #0f2a3a;
+      color: #e6f4f7;
+      outline: none;
+      min-width: 0;
+    }
+    .name-block input:focus { border-color: #5dc1d1; }
+
+    .name-block button {
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      padding: 12px 16px;
+      border-radius: 8px;
+      border: none;
+      background: #2a7d8f;
+      color: #e6f4f7;
+      cursor: pointer;
+      white-space: nowrap;
+      user-select: none;
+    }
+    .name-block button:active {
+      transform: scale(0.96);
+      background: #5dc1d1;
+      color: #0f2a3a;
+    }
 
     .buttons {
       padding: 16px;
@@ -50,58 +117,37 @@
       gap: 12px;
     }
 
-    button {
+    button.control {
       font-family: inherit;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: 700;
       padding: 18px 12px;
       border: none;
       border-radius: 12px;
-      color: white;
-      background: #333;
+      color: #e6f4f7;
+      background: #2a7d8f;
       cursor: pointer;
-      transition: transform 0.1s, opacity 0.2s;
-      min-height: 64px;
+      min-height: 60px;
       user-select: none;
+      transition: transform 0.1s;
     }
-    button:active { transform: scale(0.96); opacity: 0.85; }
-    button:disabled { opacity: 0.35; }
-
-    button.start { background: #2e7d32; }
-    button.pause { background: #f57c00; }
-    button.next { background: #1976d2; }
-    button.reset { background: #b71c1c; }
-    button.quiet { background: #5e35b1; }
-    button.exit { background: #00838f; }
-
-    button.loud {
-      grid-column: 1 / -1;
-      background: #d32f2f;
-      font-size: 20px;
-      padding: 28px 12px;
-      min-height: 90px;
-      animation: pulse 2s infinite;
-    }
-    @keyframes pulse {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(211, 47, 47, 0.7); }
-      50% { box-shadow: 0 0 0 14px rgba(211, 47, 47, 0); }
+    button.control:active {
+      transform: scale(0.96);
+      background: #5dc1d1;
+      color: #0f2a3a;
     }
 
-    .section-title {
-      grid-column: 1 / -1;
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      opacity: 0.5;
-      margin-top: 8px;
-      padding-bottom: 4px;
-    }
+    button.start { background: #2a7d8f; }
+    button.next  { background: #2a7d8f; }
+    button.pause { background: #3a6b7d; }
+    button.reset { background: #7d3a3a; }
+    button.clear { background: #4a4a4a; }
   </style>
 </head>
 <body>
 
   <div class="header">
-    <h1>Cafeteria Control</h1>
+    <h1>🍽️ Cafeteria Control</h1>
     <div class="status" id="status">Connecting…</div>
   </div>
 
@@ -112,18 +158,40 @@
     <div class="phase" id="phase"></div>
   </div>
 
+  <div class="section">
+    <div class="section-title">Free message to the screen</div>
+
+    <div class="name-block">
+      <div class="role">Message</div>
+      <div class="row">
+        <input type="text" id="inputMessage" placeholder="Type any message…" />
+        <button id="btnSendMessage">Send</button>
+      </div>
+    </div>
+
+    <button class="control start" id="btnShowSequence" style="width: 100%; margin-top: 8px;">
+      ⬅️ Back to Sequence
+    </button>
+  </div>
+
   <div class="buttons">
-    <button class="loud" id="btnLoud">🔇 Voices Too Loud</button>
+    <div class="section-title" style="grid-column: 1/-1;">Main controls</div>
+    <button class="control start" id="btnStart">▶️ Start</button>
+    <button class="control pause" id="btnPause">⏸️ Pause</button>
+    <button class="control next" id="btnNext">⏭️ Next</button>
+    <button class="control reset" id="btnReset">🔄 Reset</button>
 
-    <div class="section-title">Main controls</div>
-    <button class="start" id="btnStart">▶️ Start</button>
-    <button class="pause" id="btnPause">⏸️ Pause</button>
-    <button class="next" id="btnNext">⏭️ Next</button>
-    <button class="reset" id="btnReset">🔄 Reset</button>
+    <div class="section-title" style="grid-column: 1/-1;">Jump to phase</div>
+    <button class="control start" id="btnQuiet">🕒 Quiet Time</button>
+    <button class="control next" id="btnExit">🚪 Exit Phase</button>
 
-    <div class="section-title">Jump to phase</div>
-    <button class="quiet" id="btnQuiet">🕒 Quiet Time</button>
-    <button class="exit" id="btnExit">🚪 Exit Phase</button>
+    <div class="section-title" style="grid-column: 1/-1;">Attention</div>
+    <button class="control reset" id="btnLoud" style="grid-column: 1/-1;">
+      🔇 Voices Too Loud
+    </button>
+    <button class="control start" id="btnDing7" style="grid-column: 1/-1;">
+      🔔 Ding ×7
+    </button>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
@@ -135,20 +203,46 @@
     const sublabel = document.getElementById("sublabel");
     const timer = document.getElementById("timer");
     const phase = document.getElementById("phase");
+    const inputMessage = document.getElementById("inputMessage");
 
     function send(cmd) {
       socket.emit("command", cmd);
-      // Short haptic feedback on phones that support it
       if (navigator.vibrate) navigator.vibrate(30);
     }
 
     document.getElementById("btnStart").addEventListener("click", () => send("start"));
     document.getElementById("btnPause").addEventListener("click", () => send("pause"));
     document.getElementById("btnNext").addEventListener("click", () => send("next"));
-    document.getElementById("btnReset").addEventListener("click", () => send("reset"));
+    document.getElementById("btnReset").addEventListener("click", () => {
+      inputMessage.value = "";
+      send("reset");
+    });
     document.getElementById("btnQuiet").addEventListener("click", () => send("quiet"));
     document.getElementById("btnExit").addEventListener("click", () => send("exitPhase"));
     document.getElementById("btnLoud").addEventListener("click", () => send("loud"));
+
+    // ---- Free message ----
+    document.getElementById("btnSendMessage").addEventListener("click", () => {
+      const text = inputMessage.value.trim();
+      if (!text) return;
+      socket.emit("sendCafeteriaMessage", { text });
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+    inputMessage.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") document.getElementById("btnSendMessage").click();
+    });
+
+    // ---- Back to sequence ----
+    document.getElementById("btnShowSequence").addEventListener("click", () => {
+      socket.emit("clearCafeteriaMessage");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
+
+    // ---- Ding ×7 ----
+    document.getElementById("btnDing7").addEventListener("click", () => {
+      socket.emit("dingSeven");
+      if (navigator.vibrate) navigator.vibrate(30);
+    });
 
     function formatTime(sec) {
       const m = Math.floor(sec / 60);
@@ -160,7 +254,6 @@
       status.textContent = "Connected";
       status.className = "status connected";
     });
-
     socket.on("disconnect", () => {
       status.textContent = "Disconnected — retrying…";
       status.className = "status disconnected";
@@ -174,7 +267,9 @@
       } else {
         timer.textContent = formatTime(Math.max(0, s.secondsLeft));
       }
-      phase.textContent = `Phase ${s.phase} · Step ${s.currentIndex + 1}/${s.totalSteps}${s.paused ? " · PAUSED" : ""}`;
+      const paused = s.paused ? " · PAUSED" : "";
+      const msg = s.freeMessage ? " · MESSAGE SHOWING" : "";
+      phase.textContent = `Phase ${s.phase} · Step ${s.currentIndex + 1}/${s.totalSteps}${paused}${msg}`;
     });
   </script>
 </body>

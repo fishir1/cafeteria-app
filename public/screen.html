@@ -14,15 +14,13 @@
       color: white;
     }
 
-    /* ---- BACKGROUND FLASH ---- */
-    /* The background pulses via a keyframe animation on a colored layer. */
+    /* ---- BACKGROUND FLASH LAYER ---- */
     .bg-flash {
       position: fixed;
       inset: 0;
       z-index: 0;
       animation: bgpulse 1s infinite;
     }
-
     @keyframes bgpulse {
       0%, 100% { opacity: 1; }
       50% { opacity: 0.45; }
@@ -65,9 +63,16 @@
       font-variant-numeric: tabular-nums;
       text-shadow: 0 6px 20px rgba(0,0,0,0.5);
     }
+    .timer-small { font-size: 10vw; }
 
-    .timer-small {
-      font-size: 10vw;
+    /* ---- MESSAGE MODE ---- */
+    .message-mode {
+      font-size: 9vw;
+      font-weight: 900;
+      line-height: 1.15;
+      padding: 0 40px;
+      text-align: center;
+      text-shadow: 0 6px 20px rgba(0,0,0,0.6);
     }
 
     /* ---- LOUD OVERLAY ---- */
@@ -82,13 +87,8 @@
       z-index: 999;
       animation: bgpulse 0.6s infinite;
     }
-    .loud-overlay.show {
-      display: flex;
-    }
-    .loud-overlay .icon {
-      font-size: 20vw;
-      margin-bottom: 20px;
-    }
+    .loud-overlay.show { display: flex; }
+    .loud-overlay .icon { font-size: 20vw; margin-bottom: 20px; }
     .loud-overlay .text {
       font-size: 6vw;
       font-weight: 900;
@@ -120,7 +120,6 @@
     <p>This enables sound and connects to the server.</p>
   </div>
 
-  <!-- Background flash layer: its color is set by JS, opacity pulses via CSS -->
   <div class="bg-flash" id="bgFlash"></div>
 
   <div class="container" id="container">
@@ -134,41 +133,29 @@
     <div class="text">Please lower your voices</div>
   </div>
 
-  <!-- High-pitched ding -->
-  <audio id="ding" preload="auto">
-    <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg" />
-  </audio>
-
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io();
 
+    const container = document.getElementById("container");
     const label = document.getElementById("label");
     const sublabel = document.getElementById("sublabel");
     const timer = document.getElementById("timer");
     const loudOverlay = document.getElementById("loudOverlay");
     const prestart = document.getElementById("prestart");
-    const ding = document.getElementById("ding");
     const bgFlash = document.getElementById("bgFlash");
 
     let audioReady = false;
     let currentColor = "#222222";
     let backgroundOn = false;
 
-    // Unlock audio on first tap
     prestart.addEventListener("click", () => {
       audioReady = true;
       prestart.classList.add("hidden");
-      ding.volume = 0;
-      ding.play().then(() => {
-        ding.pause();
-        ding.currentTime = 0;
-        ding.volume = 1;
-      }).catch(() => {});
+      ensureAudioCtx();
     });
 
-    // High-pitched ding using Web Audio API (a quick rising tone)
-    // This is guaranteed to be sharp and piercing so it cuts through noise.
+    // ---- High-pitched ding (Web Audio API) ----
     let audioCtx = null;
     function ensureAudioCtx() {
       if (!audioCtx) {
@@ -182,7 +169,6 @@
       const ctx = ensureAudioCtx();
       const now = ctx.currentTime;
 
-      // Primary tone: 2500 Hz, very short attack, ~0.45s decay
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -212,15 +198,8 @@
       return `${m}:${String(s).padStart(2, "0")}`;
     }
 
-    socket.on("state", (s) => {
-      // Set the color of the flashing background layer.
-      const newColor = s.color || "#222222";
-      if (newColor !== currentColor) {
-        currentColor = newColor;
-        bgFlash.style.backgroundColor = newColor;
-      }
-
-      // Text
+    // ---- Sequence display ----
+    function showSequence(s) {
       label.textContent = s.label;
       sublabel.textContent = s.sublabel || "";
 
@@ -230,9 +209,57 @@
         timer.textContent = formatTime(Math.max(0, s.secondsLeft));
         timer.classList.toggle("timer-small", s.totalSeconds <= 60);
       }
+    }
+
+    // ---- Message display ----
+    function showMessage(text) {
+      container.innerHTML = '<div class="message-mode">' + text + '</div>';
+    }
+
+    socket.on("state", (s) => {
+      // Background color + flashing layer
+      const newColor = s.color || "#222222";
+      if (newColor !== currentColor) {
+        currentColor = newColor;
+        bgFlash.style.backgroundColor = newColor;
+      }
+
+      // If a message is active, show it and ignore the normal sequence
+      if (s.freeMessage) {
+        showMessage(s.freeMessage);
+      } else {
+        // Restore the sequence UI if we were showing a message
+        if (!container.querySelector("#label")) {
+          container.innerHTML =
+            '<div class="label" id="label"></div>' +
+            '<div class="sublabel" id="sublabel"></div>' +
+            '<div class="timer" id="timer"></div>';
+          // Re-grab references
+          const newLabel = document.getElementById("label");
+          const newSublabel = document.getElementById("sublabel");
+          const newTimer = document.getElementById("timer");
+          newLabel.textContent = s.label;
+          newSublabel.textContent = s.sublabel || "";
+          if (s.phase === 4 || s.totalSeconds === 0) {
+            newTimer.textContent = "";
+          } else {
+            newTimer.textContent = formatTime(Math.max(0, s.secondsLeft));
+            newTimer.classList.toggle("timer-small", s.totalSeconds <= 60);
+          }
+        } else {
+          document.getElementById("label").textContent = s.label;
+          document.getElementById("sublabel").textContent = s.sublabel || "";
+          const t = document.getElementById("timer");
+          if (s.phase === 4 || s.totalSeconds === 0) {
+            t.textContent = "";
+          } else {
+            t.textContent = formatTime(Math.max(0, s.secondsLeft));
+            t.classList.toggle("timer-small", s.totalSeconds <= 60);
+          }
+        }
+      }
 
       // Background flash only while the sequence is running and not paused.
-      // (When paused, we stop the pulse so it settles.)
       const shouldFlash = s.running && !s.paused && s.phase !== 4;
       if (shouldFlash && !backgroundOn) {
         bgFlash.style.animationPlayState = "running";
@@ -257,10 +284,17 @@
       playHighDing();
     });
 
-    // Loud message: ding 3 times immediately
+    // Ding ×3 for loud message
     socket.on("loud", () => {
       playDing3Times();
       loudOverlay.classList.add("show");
+    });
+
+    // Ding ×7 (button triggered)
+    socket.on("dingSeven", () => {
+      for (let i = 0; i < 7; i++) {
+        setTimeout(playHighDing, i * 320);
+      }
     });
   </script>
 </body>
