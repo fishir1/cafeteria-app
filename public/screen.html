@@ -12,10 +12,26 @@
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       background: #222;
       color: white;
-      transition: background-color 0.4s ease;
     }
 
+    /* ---- BACKGROUND FLASH ---- */
+    /* The background pulses via a keyframe animation on a colored layer. */
+    .bg-flash {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      animation: bgpulse 1s infinite;
+    }
+
+    @keyframes bgpulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.45; }
+    }
+
+    /* ---- MAIN CONTENT ---- */
     .container {
+      position: relative;
+      z-index: 1;
       width: 100%;
       height: 100%;
       display: flex;
@@ -26,28 +42,20 @@
       padding: 40px;
     }
 
-    /* Flashing animation applied to the whole container */
-    @keyframes flash {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.55; }
-    }
-    .flashing {
-      animation: flash 1s infinite;
-    }
-
     .label {
       font-size: 12vw;
       font-weight: 900;
       line-height: 1;
       margin-bottom: 30px;
-      text-shadow: 0 6px 20px rgba(0,0,0,0.4);
+      text-shadow: 0 6px 20px rgba(0,0,0,0.5);
     }
 
     .sublabel {
       font-size: 3vw;
       font-weight: 400;
-      opacity: 0.9;
+      opacity: 0.95;
       margin-bottom: 40px;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.5);
     }
 
     .timer {
@@ -55,14 +63,14 @@
       font-weight: 900;
       line-height: 1;
       font-variant-numeric: tabular-nums;
-      text-shadow: 0 6px 20px rgba(0,0,0,0.4);
+      text-shadow: 0 6px 20px rgba(0,0,0,0.5);
     }
 
     .timer-small {
       font-size: 10vw;
     }
 
-    /* "Please lower your voices" overlay */
+    /* ---- LOUD OVERLAY ---- */
     .loud-overlay {
       position: fixed;
       inset: 0;
@@ -72,7 +80,7 @@
       align-items: center;
       justify-content: center;
       z-index: 999;
-      animation: flash 0.6s infinite;
+      animation: bgpulse 0.6s infinite;
     }
     .loud-overlay.show {
       display: flex;
@@ -88,7 +96,7 @@
       padding: 0 40px;
     }
 
-    /* Pre-start screen */
+    /* ---- PRE-START ---- */
     .prestart {
       position: fixed;
       inset: 0;
@@ -107,26 +115,26 @@
 </head>
 <body>
 
-  <!-- Pre-start screen: tap once to enable audio -->
   <div class="prestart" id="prestart">
     <h1>🖐️ Tap anywhere to begin</h1>
     <p>This enables sound and connects to the server.</p>
   </div>
 
-  <!-- Main display -->
+  <!-- Background flash layer: its color is set by JS, opacity pulses via CSS -->
+  <div class="bg-flash" id="bgFlash"></div>
+
   <div class="container" id="container">
     <div class="label" id="label">Waiting…</div>
     <div class="sublabel" id="sublabel"></div>
     <div class="timer" id="timer">--</div>
   </div>
 
-  <!-- Loud overlay -->
   <div class="loud-overlay" id="loudOverlay">
     <div class="icon">🔇</div>
     <div class="text">Please lower your voices</div>
   </div>
 
-  <!-- Ding sound (uses a free public URL — replace later if you want) -->
+  <!-- High-pitched ding -->
   <audio id="ding" preload="auto">
     <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg" />
   </audio>
@@ -135,21 +143,22 @@
   <script>
     const socket = io();
 
-    const container = document.getElementById("container");
     const label = document.getElementById("label");
     const sublabel = document.getElementById("sublabel");
     const timer = document.getElementById("timer");
     const loudOverlay = document.getElementById("loudOverlay");
     const prestart = document.getElementById("prestart");
     const ding = document.getElementById("ding");
+    const bgFlash = document.getElementById("bgFlash");
 
     let audioReady = false;
+    let currentColor = "#222222";
+    let backgroundOn = false;
 
-    // Tap to enable audio
+    // Unlock audio on first tap
     prestart.addEventListener("click", () => {
       audioReady = true;
       prestart.classList.add("hidden");
-      // Play a silent sound to unlock audio
       ding.volume = 0;
       ding.play().then(() => {
         ding.pause();
@@ -158,29 +167,63 @@
       }).catch(() => {});
     });
 
+    // High-pitched ding using Web Audio API (a quick rising tone)
+    // This is guaranteed to be sharp and piercing so it cuts through noise.
+    let audioCtx = null;
+    function ensureAudioCtx() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
+
+    function playHighDing() {
+      if (!audioReady) return;
+      const ctx = ensureAudioCtx();
+      const now = ctx.currentTime;
+
+      // Primary tone: 2500 Hz, very short attack, ~0.45s decay
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(2500, now);
+
+      gain.gain.setValueAtTime(0.0, now);
+      gain.gain.linearRampToValueAtTime(1.0, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.5);
+    }
+
+    function playDing3Times() {
+      playHighDing();
+      setTimeout(playHighDing, 500);
+      setTimeout(playHighDing, 1000);
+    }
+
     function formatTime(sec) {
       const m = Math.floor(sec / 60);
       const s = sec % 60;
       return `${m}:${String(s).padStart(2, "0")}`;
     }
 
-    function playDing() {
-      if (!audioReady) return;
-      try {
-        ding.currentTime = 0;
-        ding.play();
-      } catch (e) {}
-    }
-
     socket.on("state", (s) => {
-      // Background color
-      document.body.style.backgroundColor = s.color || "#222";
+      // Set the color of the flashing background layer.
+      const newColor = s.color || "#222222";
+      if (newColor !== currentColor) {
+        currentColor = newColor;
+        bgFlash.style.backgroundColor = newColor;
+      }
 
-      // Label + sublabel
+      // Text
       label.textContent = s.label;
       sublabel.textContent = s.sublabel || "";
 
-      // Timer
       if (s.phase === 4 || s.totalSeconds === 0) {
         timer.textContent = "";
       } else {
@@ -188,11 +231,17 @@
         timer.classList.toggle("timer-small", s.totalSeconds <= 60);
       }
 
-      // Flash only when running and not paused
-      if (s.running && !s.paused) {
-        container.classList.add("flashing");
-      } else {
-        container.classList.remove("flashing");
+      // Background flash only while the sequence is running and not paused.
+      // (When paused, we stop the pulse so it settles.)
+      const shouldFlash = s.running && !s.paused && s.phase !== 4;
+      if (shouldFlash && !backgroundOn) {
+        bgFlash.style.animationPlayState = "running";
+        bgFlash.style.opacity = "1";
+        backgroundOn = true;
+      } else if (!shouldFlash && backgroundOn) {
+        bgFlash.style.animationPlayState = "paused";
+        bgFlash.style.opacity = "0.85";
+        backgroundOn = false;
       }
 
       // Loud overlay
@@ -205,12 +254,12 @@
 
     // Ding on every transition
     socket.on("transition", () => {
-      playDing();
+      playHighDing();
     });
 
-    // Ding + show immediately when loud command fires
+    // Loud message: ding 3 times immediately
     socket.on("loud", () => {
-      playDing();
+      playDing3Times();
       loudOverlay.classList.add("show");
     });
   </script>
