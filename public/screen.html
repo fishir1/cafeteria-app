@@ -26,6 +26,23 @@
       50% { opacity: 0.45; }
     }
 
+    /* ---- 5-SECOND INTENSE FLASH OVERLAY (for free messages) ---- */
+    .intense-flash {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0;
+      background: rgba(255, 255, 255, 0.55);
+    }
+    .intense-flash.active {
+      animation: intensePulse 0.35s infinite;
+    }
+    @keyframes intensePulse {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 0.55; }
+    }
+
     /* ---- MAIN CONTENT ---- */
     .container {
       position: relative;
@@ -65,7 +82,6 @@
     }
     .timer-small { font-size: 10vw; }
 
-    /* ---- MESSAGE MODE ---- */
     .message-mode {
       font-size: 9vw;
       font-weight: 900;
@@ -121,6 +137,7 @@
   </div>
 
   <div class="bg-flash" id="bgFlash"></div>
+  <div class="intense-flash" id="intenseFlash"></div>
 
   <div class="container" id="container">
     <div class="label" id="label">Waiting…</div>
@@ -138,16 +155,15 @@
     const socket = io();
 
     const container = document.getElementById("container");
-    const label = document.getElementById("label");
-    const sublabel = document.getElementById("sublabel");
-    const timer = document.getElementById("timer");
     const loudOverlay = document.getElementById("loudOverlay");
     const prestart = document.getElementById("prestart");
     const bgFlash = document.getElementById("bgFlash");
+    const intenseFlash = document.getElementById("intenseFlash");
 
     let audioReady = false;
     let currentColor = "#222222";
     let backgroundOn = false;
+    let lastFreeMessage = null;
 
     prestart.addEventListener("click", () => {
       audioReady = true;
@@ -192,71 +208,66 @@
       setTimeout(playHighDing, 1000);
     }
 
+    function triggerIntenseFlash() {
+      intenseFlash.classList.add("active");
+      setTimeout(() => {
+        intenseFlash.classList.remove("active");
+      }, 5000);
+    }
+
     function formatTime(sec) {
       const m = Math.floor(sec / 60);
       const s = sec % 60;
       return `${m}:${String(s).padStart(2, "0")}`;
     }
 
-    // ---- Sequence display ----
-    function showSequence(s) {
-      label.textContent = s.label;
-      sublabel.textContent = s.sublabel || "";
-
-      if (s.phase === 4 || s.totalSeconds === 0) {
-        timer.textContent = "";
-      } else {
-        timer.textContent = formatTime(Math.max(0, s.secondsLeft));
-        timer.classList.toggle("timer-small", s.totalSeconds <= 60);
-      }
-    }
-
-    // ---- Message display ----
     function showMessage(text) {
       container.innerHTML = '<div class="message-mode">' + text + '</div>';
     }
 
+    function showSequence(s) {
+      if (!container.querySelector("#label")) {
+        container.innerHTML =
+          '<div class="label" id="label"></div>' +
+          '<div class="sublabel" id="sublabel"></div>' +
+          '<div class="timer" id="timer"></div>';
+      }
+      const lbl = document.getElementById("label");
+      const sub = document.getElementById("sublabel");
+      const tim = document.getElementById("timer");
+
+      lbl.textContent = s.label;
+      sub.textContent = s.sublabel || "";
+
+      if (s.phase === 4 || s.totalSeconds === 0) {
+        tim.textContent = "";
+      } else {
+        tim.textContent = formatTime(Math.max(0, s.secondsLeft));
+        tim.classList.toggle("timer-small", s.totalSeconds <= 60);
+      }
+    }
+
     socket.on("state", (s) => {
-      // Background color + flashing layer
+      // Background color
       const newColor = s.color || "#222222";
       if (newColor !== currentColor) {
         currentColor = newColor;
         bgFlash.style.backgroundColor = newColor;
       }
 
-      // If a message is active, show it and ignore the normal sequence
+      // Detect new free message → ding x3 + 5s flash
+      const newMessage = s.freeMessage || null;
+      if (newMessage && newMessage !== lastFreeMessage) {
+        playDing3Times();
+        triggerIntenseFlash();
+      }
+      lastFreeMessage = newMessage;
+
+      // Render either message or sequence
       if (s.freeMessage) {
         showMessage(s.freeMessage);
       } else {
-        // Restore the sequence UI if we were showing a message
-        if (!container.querySelector("#label")) {
-          container.innerHTML =
-            '<div class="label" id="label"></div>' +
-            '<div class="sublabel" id="sublabel"></div>' +
-            '<div class="timer" id="timer"></div>';
-          // Re-grab references
-          const newLabel = document.getElementById("label");
-          const newSublabel = document.getElementById("sublabel");
-          const newTimer = document.getElementById("timer");
-          newLabel.textContent = s.label;
-          newSublabel.textContent = s.sublabel || "";
-          if (s.phase === 4 || s.totalSeconds === 0) {
-            newTimer.textContent = "";
-          } else {
-            newTimer.textContent = formatTime(Math.max(0, s.secondsLeft));
-            newTimer.classList.toggle("timer-small", s.totalSeconds <= 60);
-          }
-        } else {
-          document.getElementById("label").textContent = s.label;
-          document.getElementById("sublabel").textContent = s.sublabel || "";
-          const t = document.getElementById("timer");
-          if (s.phase === 4 || s.totalSeconds === 0) {
-            t.textContent = "";
-          } else {
-            t.textContent = formatTime(Math.max(0, s.secondsLeft));
-            t.classList.toggle("timer-small", s.totalSeconds <= 60);
-          }
-        }
+        showSequence(s);
       }
 
       // Background flash only while the sequence is running and not paused.
@@ -279,18 +290,15 @@
       }
     });
 
-    // Ding on every transition
     socket.on("transition", () => {
       playHighDing();
     });
 
-    // Ding ×3 for loud message
     socket.on("loud", () => {
       playDing3Times();
       loudOverlay.classList.add("show");
     });
 
-    // Ding ×7 (button triggered)
     socket.on("dingSeven", () => {
       for (let i = 0; i < 7; i++) {
         setTimeout(playHighDing, i * 320);
