@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
   <title>Cafeteria Control</title>
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
   <link rel="manifest" href="/site.webmanifest" />
@@ -23,6 +23,7 @@
 
     .header {
       padding: 16px;
+      padding-left: 80px;
       text-align: center;
       background: #1a4055;
       position: sticky;
@@ -38,6 +39,20 @@
     }
     .status.connected { color: #5dc1d1; opacity: 1; }
     .status.disconnected { color: #ff6b6b; opacity: 1; }
+
+    .corner-logo {
+      position: fixed;
+      top: 12px;
+      left: 12px;
+      width: 52px;
+      height: 52px;
+      border-radius: 12px;
+      z-index: 200;
+      cursor: pointer;
+      opacity: 0.95;
+      transition: transform 0.15s;
+    }
+    .corner-logo:hover { transform: scale(1.08); }
 
     .current {
       padding: 20px;
@@ -153,6 +168,8 @@
 </head>
 <body>
 
+  <a href="/" title="Home"><img src="/logo.png" alt="Home" class="corner-logo" /></a>
+
   <div class="header">
     <h1>🍽️ Cafeteria Control</h1>
     <div class="status" id="status">Connecting…</div>
@@ -228,7 +245,6 @@
     document.getElementById("btnExit").addEventListener("click", () => send("exitPhase"));
     document.getElementById("btnLoud").addEventListener("click", () => send("loud"));
 
-    // ---- Free message ----
     document.getElementById("btnSendMessage").addEventListener("click", () => {
       const text = inputMessage.value.trim();
       if (!text) return;
@@ -239,13 +255,11 @@
       if (e.key === "Enter") document.getElementById("btnSendMessage").click();
     });
 
-    // ---- Back to sequence ----
     document.getElementById("btnShowSequence").addEventListener("click", () => {
       socket.emit("clearCafeteriaMessage");
       if (navigator.vibrate) navigator.vibrate(30);
     });
 
-    // ---- Ding ×7 ----
     document.getElementById("btnDing7").addEventListener("click", () => {
       socket.emit("dingSeven");
       if (navigator.vibrate) navigator.vibrate(30);
