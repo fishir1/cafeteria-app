@@ -323,19 +323,21 @@
       socket.emit("pauseDismiss");
       if (navigator.vibrate) navigator.vibrate(30);
     });
-    document.getElementById("btnReset").addEventListener("click", () => {
+        document.getElementById("btnReset").addEventListener("click", () => {
       socket.emit("resetPrayer");
       inputAdhan.value = "";
       inputIqamah.value = "";
       inputAthkar.value = "";
       inputMessage.value = "";
+      if (window.__clearPrayerSavedFields) window.__clearPrayerSavedFields();
       if (navigator.vibrate) navigator.vibrate(30);
     });
-    document.getElementById("btnClear").addEventListener("click", () => {
+        document.getElementById("btnClear").addEventListener("click", () => {
       inputAdhan.value = "";
       inputIqamah.value = "";
       inputAthkar.value = "";
       inputMessage.value = "";
+      if (window.__clearPrayerSavedFields) window.__clearPrayerSavedFields();
       socket.emit("resetPrayer");
       if (navigator.vibrate) navigator.vibrate(30);
     });
@@ -383,6 +385,94 @@
         currentEl.textContent = "Type a name to send";
       }
     });
+  </script>
+    <script>
+    // ============================================================
+    // 1) Auto version check — reloads the page if the server version
+    //    has changed since this page was loaded.
+    // ============================================================
+    (function () {
+      const VERSION_ENDPOINT = "/version.txt";
+      const CHECK_INTERVAL_MS = 30 * 1000;
+
+      let loadedVersion = null;
+
+      async function fetchVersion() {
+        try {
+          const res = await fetch(VERSION_ENDPOINT + "?t=" + Date.now(), {
+            cache: "no-store",
+          });
+          if (!res.ok) return null;
+          return (await res.text()).trim();
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function checkOnce() {
+        const v = await fetchVersion();
+        if (!v) return;
+
+        if (loadedVersion === null) {
+          loadedVersion = v;
+          return;
+        }
+
+        if (v !== loadedVersion) {
+          loadedVersion = v;
+          const url = new URL(window.location.href);
+          url.searchParams.set("v", v);
+          window.location.replace(url.toString());
+        }
+      }
+
+      checkOnce();
+      setInterval(checkOnce, CHECK_INTERVAL_MS);
+    })();
+
+    // ============================================================
+    // 2) Auto-save typed text to local storage so nothing is lost
+    //    when the page auto-reloads for a version update.
+    // ============================================================
+    (function () {
+      const STORAGE_PREFIX = "prayer.control.";
+      const FIELD_IDS = ["inputAdhan", "inputIqamah", "inputAthkar", "inputMessage"];
+
+      function saveField(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        try {
+          localStorage.setItem(STORAGE_PREFIX + id, el.value);
+        } catch (e) {}
+      }
+
+      function restoreField(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        try {
+          const v = localStorage.getItem(STORAGE_PREFIX + id);
+          if (v !== null) el.value = v;
+        } catch (e) {}
+      }
+
+      function clearAllSaved() {
+        try {
+          FIELD_IDS.forEach((id) => localStorage.removeItem(STORAGE_PREFIX + id));
+        } catch (e) {}
+      }
+
+      // Restore on load
+      FIELD_IDS.forEach(restoreField);
+
+      // Save on every keystroke
+      FIELD_IDS.forEach((id) => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener("input", () => saveField(id));
+      });
+
+      // Expose clear function globally for the Reset and Clear All buttons
+      window.__clearPrayerSavedFields = clearAllSaved;
+    })();
   </script>
 </body>
 </html>

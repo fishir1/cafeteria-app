@@ -321,5 +321,49 @@
       }
     });
   </script>
+    <script>
+    // ============================================================
+    // Auto version check — reloads the page if the server version
+    // has changed since this page was loaded.
+    // ============================================================
+    (function () {
+      const VERSION_ENDPOINT = "/version.txt";
+      const CHECK_INTERVAL_MS = 30 * 1000;
+
+      let loadedVersion = null;
+
+      async function fetchVersion() {
+        try {
+          const res = await fetch(VERSION_ENDPOINT + "?t=" + Date.now(), {
+            cache: "no-store",
+          });
+          if (!res.ok) return null;
+          return (await res.text()).trim();
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function checkOnce() {
+        const v = await fetchVersion();
+        if (!v) return;
+
+        if (loadedVersion === null) {
+          loadedVersion = v;
+          return;
+        }
+
+        if (v !== loadedVersion) {
+          loadedVersion = v;
+          const url = new URL(window.location.href);
+          url.searchParams.set("v", v);
+          window.location.replace(url.toString());
+        }
+      }
+
+      checkOnce();
+      setInterval(checkOnce, CHECK_INTERVAL_MS);
+    })();
+  </script>
 </body>
 </html>

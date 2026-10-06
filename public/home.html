@@ -215,5 +215,56 @@
 
     <div class="footer">Tap any option to open it</div>
   </div>
+    <script>
+    // ============================================================
+    // Auto version check — reloads the page if the server version
+    // has changed since this page was loaded.
+    // ============================================================
+    (function () {
+      const VERSION_ENDPOINT = "/version.txt";
+      const CHECK_INTERVAL_MS = 30 * 1000; // every 30 seconds
+
+      // Track the version this page was loaded with.
+      // We read it once at startup.
+      let loadedVersion = null;
+
+      async function fetchVersion() {
+        try {
+          const res = await fetch(VERSION_ENDPOINT + "?t=" + Date.now(), {
+            cache: "no-store",
+          });
+          if (!res.ok) return null;
+          return (await res.text()).trim();
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function checkOnce() {
+        const v = await fetchVersion();
+        if (!v) return;
+
+        if (loadedVersion === null) {
+          // First check — record the current version
+          loadedVersion = v;
+          return;
+        }
+
+        if (v !== loadedVersion) {
+          // New version detected — force a fresh reload
+          loadedVersion = v;
+          const url = new URL(window.location.href);
+          url.searchParams.set("v", v);
+          window.location.replace(url.toString());
+        }
+      }
+
+      // Initial check
+      checkOnce();
+
+      // Recurring check
+      setInterval(checkOnce, CHECK_INTERVAL_MS);
+    })();
+  </script>
 </body>
 </html>

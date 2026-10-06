@@ -237,8 +237,9 @@
     document.getElementById("btnStart").addEventListener("click", () => send("start"));
     document.getElementById("btnPause").addEventListener("click", () => send("pause"));
     document.getElementById("btnNext").addEventListener("click", () => send("next"));
-    document.getElementById("btnReset").addEventListener("click", () => {
+        document.getElementById("btnReset").addEventListener("click", () => {
       inputMessage.value = "";
+      if (window.__clearCafeteriaSavedFields) window.__clearCafeteriaSavedFields();
       send("reset");
     });
     document.getElementById("btnQuiet").addEventListener("click", () => send("quiet"));
@@ -292,6 +293,93 @@
       const msg = s.freeMessage ? " · MESSAGE SHOWING" : "";
       phase.textContent = `Phase ${s.phase} · Step ${s.currentIndex + 1}/${s.totalSteps}${paused}${msg}`;
     });
+  </script>
+    <script>
+    // ============================================================
+    // 1) Auto version check — reloads the page if the server version
+    //    has changed since this page was loaded.
+    // ============================================================
+    (function () {
+      const VERSION_ENDPOINT = "/version.txt";
+      const CHECK_INTERVAL_MS = 30 * 1000;
+
+      let loadedVersion = null;
+
+      async function fetchVersion() {
+        try {
+          const res = await fetch(VERSION_ENDPOINT + "?t=" + Date.now(), {
+            cache: "no-store",
+          });
+          if (!res.ok) return null;
+          return (await res.text()).trim();
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function checkOnce() {
+        const v = await fetchVersion();
+        if (!v) return;
+
+        if (loadedVersion === null) {
+          loadedVersion = v;
+          return;
+        }
+
+        if (v !== loadedVersion) {
+          loadedVersion = v;
+          const url = new URL(window.location.href);
+          url.searchParams.set("v", v);
+          window.location.replace(url.toString());
+        }
+      }
+
+      checkOnce();
+      setInterval(checkOnce, CHECK_INTERVAL_MS);
+    })();
+
+    // ============================================================
+    // 2) Auto-save typed text to local storage so nothing is lost
+    //    when the page auto-reloads for a version update.
+    // ============================================================
+    (function () {
+      const STORAGE_PREFIX = "cafeteria.control.";
+
+      function saveField(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        try {
+          localStorage.setItem(STORAGE_PREFIX + id, el.value);
+        } catch (e) {}
+      }
+
+      function restoreField(id) {
+        const el = document.getElementById(id);
+        if (!el) return;
+        try {
+          const v = localStorage.getItem(STORAGE_PREFIX + id);
+          if (v !== null) el.value = v;
+        } catch (e) {}
+      }
+
+      function clearAllSaved() {
+        try {
+          localStorage.removeItem(STORAGE_PREFIX + "inputMessage");
+        } catch (e) {}
+      }
+
+      // Restore on load
+      restoreField("inputMessage");
+
+      // Save on every keystroke
+      const inputMessage = document.getElementById("inputMessage");
+      if (inputMessage) {
+        inputMessage.addEventListener("input", () => saveField("inputMessage"));
+      }
+
+      // Expose clear function globally for the Reset button
+      window.__clearCafeteriaSavedFields = clearAllSaved;
+    })();
   </script>
 </body>
 </html>

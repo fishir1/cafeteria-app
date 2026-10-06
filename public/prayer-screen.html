@@ -2,8 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>Prayer Hall Control</title>
+  <title>Prayer Hall Screen</title>
   <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
   <link rel="icon" type="image/png" sizes="192x192" href="/icon-192.png" />
   <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png" />
@@ -12,377 +11,414 @@
   <meta name="apple-mobile-web-app-title" content="Cafeteria" />
   <meta name="theme-color" content="#0f2a3a" />
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-    html, body {
-      min-height: 100%;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: #0f2a3a;
-      color: #e6f4f7;
-      overflow-y: auto;
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --deep-green: #0f2a3a;
+      --mid-green: #1a4055;
+      --gold: #5dc1d1;
+      --light-gold: #8fd4e0;
+      --cream: #e6f4f7;
     }
 
-    .header {
-      padding: 16px;
-      padding-left: 80px;
-      text-align: center;
-      background: #1a4055;
-      position: sticky;
-      top: 0;
-      z-index: 10;
-      border-bottom: 1px solid #2a7d8f;
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--deep-green);
+      color: var(--cream);
     }
-    .header h1 { font-size: 18px; font-weight: 800; letter-spacing: 1px; }
-    .status {
-      font-size: 13px;
-      opacity: 0.7;
-      margin-top: 4px;
-    }
-    .status.connected { color: #5dc1d1; opacity: 1; }
-    .status.disconnected { color: #ff6b6b; opacity: 1; }
 
     .corner-logo {
       position: fixed;
-      top: 12px;
-      left: 12px;
-      width: 52px;
-      height: 52px;
+      top: 16px;
+      left: 16px;
+      width: 56px;
+      height: 56px;
       border-radius: 12px;
       z-index: 200;
       cursor: pointer;
-      opacity: 0.95;
-      transition: transform 0.15s;
+      opacity: 0.9;
+      transition: transform 0.15s, opacity 0.15s;
     }
-    .corner-logo:hover { transform: scale(1.08); }
-
-    .section {
-      padding: 16px;
-      border-bottom: 1px solid #1a4055;
+    .corner-logo:hover {
+      transform: scale(1.08);
+      opacity: 1;
     }
 
-    .section-title {
-      font-size: 12px;
-      text-transform: uppercase;
-      letter-spacing: 2px;
-      opacity: 0.6;
-      margin-bottom: 10px;
+    .pattern {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      opacity: 0.06;
+      background-image:
+        radial-gradient(circle at 25% 25%, var(--gold) 1.5px, transparent 2px),
+        radial-gradient(circle at 75% 75%, var(--gold) 1.5px, transparent 2px);
+      background-size: 80px 80px;
+      background-position: 0 0, 40px 40px;
+      pointer-events: none;
     }
 
-    .name-block {
-      background: #1a4055;
-      border-radius: 12px;
-      padding: 12px;
-      margin-bottom: 12px;
+    .flash-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      pointer-events: none;
+      opacity: 0;
+      background: var(--light-gold);
+      transition: opacity 0.1s;
+    }
+    .flash-overlay.active {
+      animation: intenseFlash 0.35s infinite;
+    }
+    @keyframes intenseFlash {
+      0%, 100% { opacity: 0.0; }
+      50% { opacity: 0.35; }
     }
 
-    .name-block .role {
-      font-size: 14px;
-      font-weight: 700;
-      color: #5dc1d1;
-      margin-bottom: 8px;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-
-    .name-block .row {
+    .content {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      height: 100%;
       display: flex;
-      gap: 8px;
-    }
-
-    .name-block input {
-      flex: 1;
-      font-family: inherit;
-      font-size: 16px;
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid #2a7d8f;
-      background: #0f2a3a;
-      color: #e6f4f7;
-      outline: none;
-      min-width: 0;
-    }
-    .name-block input:focus { border-color: #5dc1d1; }
-
-    .name-block button {
-      font-family: inherit;
-      font-size: 14px;
-      font-weight: 700;
-      padding: 12px 16px;
-      border-radius: 8px;
-      border: none;
-      background: #2a7d8f;
-      color: #e6f4f7;
-      cursor: pointer;
-      white-space: nowrap;
-      user-select: none;
-    }
-    .name-block button:active {
-      transform: scale(0.96);
-      background: #5dc1d1;
-      color: #0f2a3a;
-    }
-
-    .buttons {
-      padding: 16px;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    button.control {
-      font-family: inherit;
-      font-size: 15px;
-      font-weight: 700;
-      padding: 18px 12px;
-      border: none;
-      border-radius: 12px;
-      color: #e6f4f7;
-      background: #2a7d8f;
-      cursor: pointer;
-      min-height: 60px;
-      user-select: none;
-      transition: transform 0.1s;
-    }
-    button.control:active {
-      transform: scale(0.96);
-      background: #5dc1d1;
-      color: #0f2a3a;
-    }
-
-    button.start { background: #2a7d8f; }
-    button.next  { background: #2a7d8f; }
-    button.pause { background: #3a6b7d; }
-    button.reset { background: #7d3a3a; }
-    button.clear { background: #4a4a4a; }
-
-    .status-panel {
-      padding: 16px;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
       text-align: center;
-      background: #1a4055;
-      border-top: 1px solid #2a7d8f;
-      border-bottom: 1px solid #2a7d8f;
+      padding: 40px;
     }
-    .status-panel .mode {
-      font-size: 12px;
+
+    .role-title {
+      font-size: 5vw;
+      font-weight: 600;
+      letter-spacing: 8px;
+      color: var(--gold);
       text-transform: uppercase;
-      letter-spacing: 2px;
-      opacity: 0.6;
-      margin-bottom: 4px;
-    }
-    .status-panel .current {
-      font-size: 20px;
-      font-weight: 800;
+      margin-bottom: 40px;
+      opacity: 0.9;
     }
 
-    .footer-note {
-      padding: 16px;
+    .student-name {
+      font-size: 16vw;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--cream);
+      text-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      margin-bottom: 40px;
+    }
+
+    .class-label {
+      font-size: 20vw;
+      font-weight: 900;
+      line-height: 1;
+      color: var(--cream);
+      text-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      margin-bottom: 30px;
+    }
+
+    .class-sublabel {
+      font-size: 3vw;
+      opacity: 0.85;
+      color: var(--gold);
+      margin-bottom: 40px;
+      letter-spacing: 2px;
+    }
+
+    .class-timer {
+      font-size: 14vw;
+      font-weight: 900;
+      font-variant-numeric: tabular-nums;
+      color: var(--light-gold);
+      text-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+
+    .end-message {
+      font-size: 9vw;
+      font-weight: 800;
       text-align: center;
-      font-size: 12px;
-      opacity: 0.5;
+      color: var(--cream);
+      text-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      line-height: 1.2;
+    }
+
+    .message-mode {
+      font-size: 11vw;
+      font-weight: 900;
+      line-height: 1.15;
+      padding: 0 40px;
+      text-align: center;
+      color: var(--cream);
+      text-shadow: 0 8px 30px rgba(0,0,0,0.6);
+    }
+
+    .idle {
+      font-size: 3.5vw;
+      color: var(--gold);
+      opacity: 0.7;
+      letter-spacing: 3px;
+    }
+
+    .loud-overlay {
+      position: fixed;
+      inset: 0;
+      background: #b00020;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 999;
+      animation: loudFlash 0.6s infinite;
+    }
+    .loud-overlay.show { display: flex; }
+    .loud-overlay .icon { font-size: 20vw; margin-bottom: 20px; }
+    .loud-overlay .text {
+      font-size: 6vw;
+      font-weight: 900;
+      text-align: center;
+      padding: 0 40px;
+      color: #fff;
+    }
+    @keyframes loudFlash {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.55; }
+    }
+
+    .prestart {
+      position: fixed;
+      inset: 0;
+      background: var(--deep-green);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 500;
+      cursor: pointer;
+    }
+    .prestart.hidden { display: none; }
+    .prestart h1 {
+      font-size: 4vw;
+      margin-bottom: 20px;
+      color: var(--gold);
+    }
+    .prestart p {
+      font-size: 2vw;
+      opacity: 0.7;
+      color: var(--cream);
     }
   </style>
 </head>
 <body>
 
+  <div class="prestart" id="prestart">
+    <h1>🕌 Tap anywhere to begin</h1>
+    <p>This enables sound and connects to the server.</p>
+  </div>
+
   <a href="/" title="Home"><img src="/logo.png" alt="Home" class="corner-logo" /></a>
 
-  <div class="header">
-    <h1>🕌 Prayer Hall Control</h1>
-    <div class="status" id="status">Connecting…</div>
+  <div class="pattern"></div>
+  <div class="flash-overlay" id="flashOverlay"></div>
+
+  <div class="content" id="content">
+    <div class="idle" id="idle">Waiting for names…</div>
   </div>
 
-  <div class="status-panel">
-    <div class="mode" id="mode">Mode</div>
-    <div class="current" id="current">—</div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Send a name to the screen</div>
-
-    <div class="name-block">
-      <div class="role">Adhan</div>
-      <div class="row">
-        <input type="text" id="inputAdhan" placeholder="Type student name…" />
-        <button data-role="adhan">Send</button>
-      </div>
-    </div>
-
-    <div class="name-block">
-      <div class="role">Iqamah</div>
-      <div class="row">
-        <input type="text" id="inputIqamah" placeholder="Type student name…" />
-        <button data-role="iqamah">Send</button>
-      </div>
-    </div>
-
-    <div class="name-block">
-      <div class="role">Athkar</div>
-      <div class="row">
-        <input type="text" id="inputAthkar" placeholder="Type student name…" />
-        <button data-role="athkar">Send</button>
-      </div>
-    </div>
-  </div>
-
-  <div class="section">
-    <div class="section-title">Free message to the screen</div>
-
-    <div class="name-block">
-      <div class="role">Message</div>
-      <div class="row">
-        <input type="text" id="inputMessage" placeholder="Type any message…" />
-        <button id="btnSendMessage">Send</button>
-      </div>
-    </div>
-
-    <button class="control start" id="btnShowSequence" style="width: 100%; margin-top: 8px;">
-      ⬅️ Back to Sequence
-    </button>
-  </div>
-
-  <div class="buttons">
-    <div class="section-title" style="grid-column: 1/-1;">Dismissal controls</div>
-    <button class="control start" id="btnStart">▶️ Start Dismissal</button>
-    <button class="control next" id="btnNext">⏭️ Next Class</button>
-    <button class="control pause" id="btnPause">⏸️ Pause</button>
-    <button class="control reset" id="btnReset">🔄 Reset</button>
-    <button class="control clear" id="btnClear" style="grid-column: 1/-1;">🧹 Clear All</button>
-
-    <div class="section-title" style="grid-column: 1/-1;">Attention</div>
-    <button class="control reset" id="btnLoud" style="grid-column: 1/-1;">
-      🔇 Voices Too Loud
-    </button>
-    <button class="control start" id="btnDing7" style="grid-column: 1/-1;">
-      🔔 Ding ×7
-    </button>
-  </div>
-
-  <div class="footer-note">
-    All names clear automatically after dismissal ends.
+  <div class="loud-overlay" id="loudOverlay">
+    <div class="icon">🔇</div>
+    <div class="text">Please lower your voices</div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
   <script>
     const socket = io("/prayer");
 
-    const status = document.getElementById("status");
-    const modeEl = document.getElementById("mode");
-    const currentEl = document.getElementById("current");
+    const prestart = document.getElementById("prestart");
+    const content = document.getElementById("content");
+    const flashOverlay = document.getElementById("flashOverlay");
+    const loudOverlay = document.getElementById("loudOverlay");
 
-    const inputAdhan = document.getElementById("inputAdhan");
-    const inputIqamah = document.getElementById("inputIqamah");
-    const inputAthkar = document.getElementById("inputAthkar");
-    const inputMessage = document.getElementById("inputMessage");
+    let audioReady = false;
 
-    document.querySelectorAll(".name-block button[data-role]").forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const role = btn.dataset.role;
-        let input;
-        if (role === "adhan") input = inputAdhan;
-        else if (role === "iqamah") input = inputIqamah;
-        else input = inputAthkar;
-
-        const name = input.value.trim();
-        if (!name) return;
-        socket.emit("sendName", { role, name });
-        if (navigator.vibrate) navigator.vibrate(30);
-      });
+    prestart.addEventListener("click", () => {
+      audioReady = true;
+      prestart.classList.add("hidden");
+      ensureAudioCtx();
     });
 
-    [inputAdhan, inputIqamah, inputAthkar].forEach((inp) => {
-      inp.addEventListener("keydown", (e) => {
-        if (e.key === "Enter") {
-          inp.parentElement.querySelector("button[data-role]").click();
-        }
-      });
-    });
+    let audioCtx = null;
+    function ensureAudioCtx() {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
+      return audioCtx;
+    }
 
-    document.getElementById("btnSendMessage").addEventListener("click", () => {
-      const text = inputMessage.value.trim();
-      if (!text) return;
-      socket.emit("sendMessage", { text });
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
-    inputMessage.addEventListener("keydown", (e) => {
-      if (e.key === "Enter") document.getElementById("btnSendMessage").click();
-    });
+    function playHighDing() {
+      if (!audioReady) return;
+      const ctx = ensureAudioCtx();
+      const now = ctx.currentTime;
 
-    document.getElementById("btnShowSequence").addEventListener("click", () => {
-      socket.emit("clearPrayerMessage");
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
 
-    document.getElementById("btnStart").addEventListener("click", () => {
-      socket.emit("startDismiss");
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
-    document.getElementById("btnNext").addEventListener("click", () => {
-      socket.emit("nextClass");
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
-    document.getElementById("btnPause").addEventListener("click", () => {
-      socket.emit("pauseDismiss");
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
-    document.getElementById("btnReset").addEventListener("click", () => {
-      socket.emit("resetPrayer");
-      inputAdhan.value = "";
-      inputIqamah.value = "";
-      inputAthkar.value = "";
-      inputMessage.value = "";
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
-    document.getElementById("btnClear").addEventListener("click", () => {
-      inputAdhan.value = "";
-      inputIqamah.value = "";
-      inputAthkar.value = "";
-      inputMessage.value = "";
-      socket.emit("resetPrayer");
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(2500, now);
 
-    document.getElementById("btnLoud").addEventListener("click", () => {
-      socket.emit("loudPrayer");
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
+      gain.gain.setValueAtTime(0.0, now);
+      gain.gain.linearRampToValueAtTime(1.0, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.001, now + 0.45);
 
-    document.getElementById("btnDing7").addEventListener("click", () => {
-      socket.emit("dingSeven");
-      if (navigator.vibrate) navigator.vibrate(30);
-    });
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.start(now);
+      osc.stop(now + 0.5);
+    }
+
+    function playDing3Times() {
+      playHighDing();
+      setTimeout(playHighDing, 500);
+      setTimeout(playHighDing, 1000);
+    }
+
+    function triggerIntenseFlash() {
+      flashOverlay.classList.add("active");
+      setTimeout(() => {
+        flashOverlay.classList.remove("active");
+      }, 5000);
+    }
+
+    function showIdle() {
+      content.innerHTML = '<div class="idle">Waiting for names…</div>';
+    }
+
+    function showName(role, name) {
+      const titles = { adhan: "Adhan", iqamah: "Iqamah", athkar: "Athkar" };
+      const title = titles[role] || "";
+      content.innerHTML =
+        '<div class="role-title">' + title + '</div>' +
+        '<div class="student-name">' + name + '</div>';
+    }
+
+    function showDismiss(label, sublabel, seconds) {
+      const min = Math.floor(seconds / 60);
+      const sec = seconds % 60;
+      const timeStr = min + ":" + String(sec).padStart(2, "0");
+      content.innerHTML =
+        '<div class="class-sublabel">' + sublabel + '</div>' +
+        '<div class="class-label">' + label + '</div>' +
+        '<div class="class-timer">' + timeStr + '</div>';
+    }
+
+    function showEnd() {
+      content.innerHTML =
+        '<div class="end-message">Please return to classes quietly</div>';
+    }
+
+    function showMessage(text) {
+      content.innerHTML = '<div class="message-mode">' + text + '</div>';
+    }
 
     socket.on("connect", () => {
-      status.textContent = "Connected";
-      status.className = "status connected";
-    });
-    socket.on("disconnect", () => {
-      status.textContent = "Disconnected — retrying…";
-      status.className = "status disconnected";
+      console.log("Prayer screen connected");
     });
 
     socket.on("state", (s) => {
       if (s.freeMessage) {
-        modeEl.textContent = "Message showing";
-        currentEl.textContent = s.freeMessage;
+        showMessage(s.freeMessage);
         return;
       }
+
       if (s.mode === "dismiss") {
-        modeEl.textContent = "Dismissing";
-        currentEl.textContent =
-          s.dismissLabel + "  ·  " + Math.max(0, s.dismissSecondsLeft) + "s" +
-          "  (" + (s.dismissIndex + 1) + "/" + s.dismissTotal + ")";
+        showDismiss(
+          s.dismissLabel,
+          s.dismissSublabel,
+          Math.max(0, s.dismissSecondsLeft)
+        );
       } else if (s.mode === "end") {
-        modeEl.textContent = "Complete";
-        currentEl.textContent = "Please return to classes quietly";
+        showEnd();
       } else if (s.mode === "names" && s.activeName) {
-        modeEl.textContent = "Showing name";
-        const titles = { adhan: "Adhan", iqamah: "Iqamah", athkar: "Athkar" };
-        currentEl.textContent =
-          (titles[s.activeName.role] || "") + " — " + s.activeName.name;
+        showName(s.activeName.role, s.activeName.name);
       } else {
-        modeEl.textContent = "Ready";
-        currentEl.textContent = "Type a name to send";
+        showIdle();
+      }
+
+      if (!s.loudMessageActive) {
+        loudOverlay.classList.remove("show");
       }
     });
+
+    socket.on("nameArrived", () => {
+      playHighDing();
+      triggerIntenseFlash();
+    });
+
+    socket.on("dismissTransition", () => {
+      playHighDing();
+      triggerIntenseFlash();
+    });
+
+    socket.on("dismissEnd", () => {
+      playHighDing();
+    });
+
+    socket.on("dingSeven", () => {
+      for (let i = 0; i < 7; i++) {
+        setTimeout(playHighDing, i * 320);
+      }
+    });
+
+    socket.on("loud", () => {
+      playDing3Times();
+      loudOverlay.classList.add("show");
+    });
+  </script>
+
+  <script>
+    // ============================================================
+    // Auto version check — reloads the page if the server version
+    // has changed since this page was loaded.
+    // ============================================================
+    (function () {
+      const VERSION_ENDPOINT = "/version.txt";
+      const CHECK_INTERVAL_MS = 30 * 1000;
+
+      let loadedVersion = null;
+
+      async function fetchVersion() {
+        try {
+          const res = await fetch(VERSION_ENDPOINT + "?t=" + Date.now(), {
+            cache: "no-store",
+          });
+          if (!res.ok) return null;
+          return (await res.text()).trim();
+        } catch (e) {
+          return null;
+        }
+      }
+
+      async function checkOnce() {
+        const v = await fetchVersion();
+        if (!v) return;
+
+        if (loadedVersion === null) {
+          loadedVersion = v;
+          return;
+        }
+
+        if (v !== loadedVersion) {
+          loadedVersion = v;
+          const url = new URL(window.location.href);
+          url.searchParams.set("v", v);
+          window.location.replace(url.toString());
+        }
+      }
+
+      checkOnce();
+      setInterval(checkOnce, CHECK_INTERVAL_MS);
+    })();
   </script>
 </body>
 </html>
